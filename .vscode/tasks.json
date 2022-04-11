@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // Colorized CMake/Build output
+            // https://github.com/microsoft/vscode-cmake-tools/issues/478
+            "label": "Build",
+            "type": "cmake",
+            "command": "build",
+            "problemMatcher":"$gcc",
+            "runOptions": {
+                "instanceLimit": 1
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "echo",
+            "type": "shell",
+            "command": "echo ${command:cmake.getLaunchTargetDirectory}"
+        }
+    ]
+}

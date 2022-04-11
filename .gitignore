@@ -1,0 +1,6 @@
+/build
+/workdir/bin_*
+/.vs
+/.vscode/ipch
+
+/application/resources/*.qm
