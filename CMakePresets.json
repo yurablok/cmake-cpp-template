@@ -1,0 +1,187 @@
+{
+  "version": 3,
+  "buildPresets": [
+    {
+      "name": "x64-Debug-Linux",
+      "displayName": "Preset",
+      "configurePreset": "x64-Debug-Linux"
+    },
+    {
+      "name": "x64-Release-Linux",
+      "displayName": "Preset",
+      "configurePreset": "linux-default"
+    },
+    {
+      "name": "x64-RelNoDebInfo-Linux",
+      "displayName": "Preset",
+      "configurePreset": "x64-RelNoDebInfo-Linux"
+    },
+    {
+      "name": "x32-Debug-Windows",
+      "displayName": "Preset",
+      "configurePreset": "x32-Debug-Windows"
+    },
+    {
+      "name": "x32-Release-Windows",
+      "displayName": "Preset",
+      "configurePreset": "x32-Release-Windows"
+    },
+    {
+      "name": "x32-RelNoDebInfo-Windows",
+      "displayName": "Preset",
+      "configurePreset": "x32-RelNoDebInfo-Windows"
+    },
+    {
+      "name": "x64-Debug-Windows",
+      "displayName": "Preset",
+      "configurePreset": "x64-Debug-Windows"
+    },
+    {
+      "name": "x64-Release-Windows",
+      "displayName": "Preset",
+      "configurePreset": "windows-default"
+    },
+    {
+      "name": "x64-RelNoDebInfo-Windows",
+      "displayName": "Preset",
+      "configurePreset": "x64-RelNoDebInfo-Windows"
+    }
+  ],
+  "configurePresets": [
+    {
+      "name": "x64-Debug-Linux",
+      "displayName": "x64-Debug-Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CONFIGURATION_TYPES": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Linux" ]
+        }
+      }
+    },
+    {
+      "name": "linux-default",
+      "displayName": "x64-Release-Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/.cmake/x64-Release-Linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Linux" ]
+        }
+      }
+    },
+    {
+      "name": "x64-RelNoDebInfo-Linux",
+      "displayName": "x64-RelNoDebInfo-Linux",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CONFIGURATION_TYPES": "Release"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Linux" ]
+        }
+      }
+    },
+    {
+      "name": "x32-Debug-Windows",
+      "displayName": "x32-Debug-Windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
+        }
+      }
+    },
+    {
+      "name": "x32-Release-Windows",
+      "displayName": "x32-Release-Windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
+        }
+      }
+    },
+    {
+      "name": "x32-RelNoDebInfo-Windows",
+      "displayName": "x32-RelNoDebInfo-Windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
+        }
+      }
+    },
+    {
+      "name": "x64-Debug-Windows",
+      "displayName": "x64-Debug-Windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
+        }
+      }
+    },
+    {
+      "name": "windows-default",
+      "displayName": "x64-Release-Windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/.cmake/x64-Release-Windows",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
+        }
+      }
+    },
+    {
+      "name": "x64-RelNoDebInfo-Windows",
+      "displayName": "x64-RelNoDebInfo-Windows",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ]
+        }
+      }
+    }
+  ]
+}
