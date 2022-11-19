@@ -30,26 +30,28 @@ endif()
 
 
 # Qt
-find_package(Qt5 COMPONENTS
-    Core Network REQUIRED)
-target_compile_definitions(${PROJECT_NAME} PRIVATE QT_USE_QSTRINGBUILDER)
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    Qt5::Core Qt5::Network)
-#qt5_add_resources(PROJECT_RESOURCES "resources.qrc")
-qt5_create_ts_and_qm(
-    SOURCES "."
-    TS_FILES "resources/ts_chi.ts" # For example, ISO 639-2/B
-             "resources/ts_spa.ts"
-             "resources/ts_eng.ts"
-             "resources/ts_por.ts"
-             "resources/ts_rus.ts"
-             "resources/ts_jpn.ts"
-             "resources/ts_kor.ts"
-             "resources/ts_fre.ts"
-             "resources/ts_ger.ts"
-             "resources/ts_ita.ts"
-    QM_DIR "resources"
-)
+if(Qt5_DIR)
+    find_package(Qt5 COMPONENTS
+        Core Network REQUIRED)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE QT_USE_QSTRINGBUILDER)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt5::Core Qt5::Network)
+    #qt5_add_resources(PROJECT_RESOURCES "resources.qrc")
+    qt5_create_ts_and_qm(
+        SOURCES "."
+        TS_FILES "resources/ts_chi.ts" # For example, ISO 639-2/B
+                 "resources/ts_spa.ts"
+                 "resources/ts_eng.ts"
+                 "resources/ts_por.ts"
+                 "resources/ts_rus.ts"
+                 "resources/ts_jpn.ts"
+                 "resources/ts_kor.ts"
+                 "resources/ts_fre.ts"
+                 "resources/ts_ger.ts"
+                 "resources/ts_ita.ts"
+        QM_DIR "resources"
+    )
+endif()
 
 
 # headeronly

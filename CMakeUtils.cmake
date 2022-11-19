@@ -2,7 +2,8 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
-# v0.1 2022-Oct-18     First release.
+# v0.2  2022-Dec-24     Added support for Windows ARM64.
+# v0.1  2022-Oct-18     First release.
 
 # Call it before the main `project(...)`
 macro(check_build_directory)
@@ -31,7 +32,13 @@ function(init_project)
         message(FATAL_ERROR "At least one target must be specified.")
     endif()
 
-    if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|ARM).*")
+    if(NOT "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "")
+        set(CMAKE_TARGET_ARCH ${CMAKE_CXX_COMPILER_ARCHITECTURE_ID})
+    else()
+        set(CMAKE_TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
+    endif()
+    message("CMAKE_TARGET_ARCH: ${CMAKE_TARGET_ARCH}")
+    if("${CMAKE_TARGET_ARCH}" MATCHES "(arm|ARM|aarch).*")
         if(CMAKE_SIZEOF_VOID_P EQUAL 8)
             set(BUILD_ARCH "arm64")
         else()
@@ -66,6 +73,7 @@ function(init_project)
     endif()
 
     set(BUILD_FOLDER "${BUILD_ARCH}-${BUILD_TYPE}-${BUILD_PLATFORM}")
+    message("BUILD_FOLDER: ${BUILD_FOLDER}")
 
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}" PARENT_SCOPE)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}" PARENT_SCOPE)
@@ -82,7 +90,7 @@ function(init_project)
 
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         #NOTE: Link-Time Global Optimization
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE PARENT_SCOPE)
     endif()
 
     if(MSVC)
@@ -91,6 +99,7 @@ function(init_project)
                 /utf-8 # Set source and execution character sets to UTF-8
                 /sdl # Enable Additional Security Checks
                 /MP # Build with Multiple Processes
+                /permissive- # Standards conformance
             )
         else()
             add_compile_options(-fcolor-diagnostics)
@@ -342,12 +351,15 @@ function(__write_msvs_launch_vs_json targets)
         set(targetArgs ${CMAKE_MATCH_2})
         message("targetName=${targetName} targetArgs=[${targetArgs}]")
 
-        add("x32-Debug-Windows/Debug"            "${Qt5x32Path}" "${targetName}" "${targetArgs}")
-        add("x32-Release-Windows/RelWithDebInfo" "${Qt5x32Path}" "${targetName}" "${targetArgs}")
-        add("x32-RelNoDebInfo-Windows/Release"   "${Qt5x32Path}" "${targetName}" "${targetArgs}")
-        add("x64-Debug-Windows/Debug"            "${Qt5x64Path}" "${targetName}" "${targetArgs}")
-        add("x64-Release-Windows/RelWithDebInfo" "${Qt5x64Path}" "${targetName}" "${targetArgs}")
-        add("x64-RelNoDebInfo-Windows/Release"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x32-Debug-Windows/Debug"              "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+        add("x32-Release-Windows/RelWithDebInfo"   "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+        add("x32-RelNoDebInfo-Windows/Release"     "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+        add("x64-Debug-Windows/Debug"              "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x64-Release-Windows/RelWithDebInfo"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x64-RelNoDebInfo-Windows/Release"     "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-Debug-Windows/Debug"            "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-Release-Windows/RelWithDebInfo" "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-RelNoDebInfo-Windows/Release"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
     endforeach()
 
     set(json "${json}  ]\n")

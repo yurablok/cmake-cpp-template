@@ -1,13 +1,17 @@
 #include <fstream>
 
-#include <QCoreApplication>
+#ifdef QT_VERSION
+#   include <QCoreApplication>
+#endif
 
 #include "headeronly.hpp"
 #include "shared.hpp"
 #include "static.hpp"
 
 int32_t main(int32_t argc, char* argv[]) {
+# ifdef QT_VERSION
     QCoreApplication app(argc, argv);
+# endif
 
     headeronly();
     shared();
@@ -18,6 +22,8 @@ int32_t main(int32_t argc, char* argv[]) {
         test << argv[i] << std::endl;
     }
 
+# ifdef QT_VERSION
     QObject::tr("Some string");
+# endif
     return 0;
 }
