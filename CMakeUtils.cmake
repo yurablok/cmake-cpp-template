@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.3  2023-Jan-24     Added `add_option`.
 # v0.2  2022-Dec-24     Added support for Windows ARM64.
 # v0.1  2022-Oct-18     First release.
 
@@ -27,7 +28,7 @@ function(init_project)
         return()
     endif()
 
-    cmake_parse_arguments(arg "" "" "" "${ARGN}")
+    cmake_parse_arguments(arg "" "" "" ${ARGN})
     if(NOT DEFINED arg_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "At least one target must be specified.")
     endif()
@@ -167,14 +168,182 @@ function(init_project)
 endfunction(init_project)
 
 
-# @param SOURCES    directory where lupdate will look for C++ sources
-# @param TS_FILES   list of generated *.ts files
-# @param QM_DIR     directory for generated *.qm files
+# @param [0]                Type: BOOL | ENUM | STRING | DIR | FILE
+# @param [1]                Option's name. Prefix "OPTION_" will be added.
+# @param [2] (optional)     Default variant
+# @param [n] (optional)     Other variants
+# @param TARGETS            Targets
+# @param COMMENT (optional) Comment
+function(add_option)
+    set(argIdx -1)
+    set(optionDefault "")
+    set(optionVariants "")
+    set(isTargets FALSE)
+    set(optionTargets "")
+    set(isComment FALSE)
+    set(optionComment "")
+    foreach(arg ${ARGN})
+        math(EXPR argIdx "${argIdx}+1")
+        if(${argIdx} EQUAL 0)
+            set(optionType "${arg}")
+
+        elseif(${argIdx} EQUAL 1)
+            set(optionName "OPTION_${arg}")
+
+        elseif("${arg}" STREQUAL "TARGETS")
+            set(isTargets TRUE)
+            set(isComment FALSE)
+
+        elseif("${arg}" STREQUAL "COMMENT")
+            set(isTargets FALSE)
+            set(isComment TRUE)
+
+        elseif(${isTargets})
+            list(APPEND optionTargets "${arg}")
+
+        elseif(${isComment})
+            list(APPEND optionComment "${arg}")
+
+        else()
+            if(${argIdx} EQUAL 2)
+                set(optionDefault "${arg}")
+            endif()
+            list(APPEND optionVariants "${arg}")
+        endif()
+    endforeach()
+    string(REPLACE ";" "\n " optionComment "${optionComment}")
+
+    if("${optionName}" STREQUAL "")
+        message(FATAL_ERROR "add_option: <NAME> must be specified.")
+
+    elseif("${optionType}" STREQUAL "")
+        message(FATAL_ERROR "add_option: <TYPE> must be specified.")
+
+    elseif("${optionTargets}" STREQUAL "")
+        message(FATAL_ERROR "add_option: <TARGETS> must be specified.")
+
+    elseif("${optionType}" STREQUAL "BOOL")
+        if(NOT "${optionDefault}" MATCHES "^(ON|OFF|TRUE|FALSE|YES|NO)$")
+            message(FATAL_ERROR "add_option: BOOL: <DEFAULT> must be one of (ON | OFF | TRUE | FALSE | YES | NO).")
+        endif()
+        list(LENGTH optionVariants size)
+        if(NOT ${size} EQUAL 1)
+            message(FATAL_ERROR "add_option: BOOL: too many defaults.")
+        endif()
+        if("${optionComment}" STREQUAL "")
+            set(optionComment " Boolean option")
+        endif()
+
+        if(NOT "${${optionName}}" STREQUAL "")
+            set(optionDefault ${${optionName}})
+        endif()
+        set(${optionName} ${optionDefault} CACHE BOOL "${optionComment}" FORCE)
+
+        foreach(optionTarget ${optionTargets})
+            if(${optionDefault})
+                target_compile_definitions(${optionTarget} PRIVATE ${optionName}=1)
+            else()
+                target_compile_definitions(${optionTarget} PRIVATE ${optionName}=0)
+            endif()
+        endforeach()
+
+    elseif("${optionType}" STREQUAL "ENUM")
+        if("${optionVariants}" MATCHES ".* .*")
+            message(FATAL_ERROR "add_option: ENUM: variants must not contain spaces in their names.")
+        endif()
+        list(LENGTH optionVariants size)
+        if(${size} LESS 2)
+            message(FATAL_ERROR "add_option: ENUM: too few variants.")
+        endif()
+        if(NOT "${optionComment}" STREQUAL "")
+            string(APPEND optionComment "\n")
+        endif()
+        string(APPEND optionComment " Enum variants: ${optionVariants}")
+
+        if(NOT "${${optionName}}" STREQUAL "")
+            set(optionDefault ${${optionName}})
+            list(FIND optionVariants ${optionDefault} result)
+            if(${result} LESS 0)
+                message(FATAL_ERROR "add_option: ENUM: unknown variant ${optionDefault}.")
+            endif()
+        endif()
+        set(${optionName} ${optionDefault} CACHE STRING "${optionComment}" FORCE)
+        set_property(CACHE ${optionName} PROPERTY STRINGS ${optionVariants})
+
+        foreach(optionTarget ${optionTargets})
+            target_compile_definitions(${optionTarget} PRIVATE ${optionName}="${optionDefault}")
+            target_compile_definitions(${optionTarget} PRIVATE ${optionName}_${optionDefault}=1)
+        endforeach()
+
+    elseif("${optionType}" STREQUAL "STRING")
+        list(LENGTH optionVariants size)
+        if(${size} GREATER 1)
+            message(FATAL_ERROR "add_option: STRING: too many defaults.")
+        endif()
+        if("${optionComment}" STREQUAL "")
+            set(optionComment " String option")
+        endif()
+
+        if(DEFINED ${optionName})
+            set(optionDefault ${${optionName}})
+        endif()
+        set(${optionName} ${optionDefault} CACHE STRING "${optionComment}" FORCE)
+
+        foreach(optionTarget ${optionTargets})
+            target_compile_definitions(${optionTarget} PRIVATE ${optionName}="${optionDefault}")
+        endforeach()
+
+    elseif("${optionType}" STREQUAL "DIR")
+        list(LENGTH optionVariants size)
+        if(${size} GREATER 1)
+            message(FATAL_ERROR "add_option: DIR: too many defaults.")
+        endif()
+        if("${optionComment}" STREQUAL "")
+            set(optionComment " Directory option")
+        endif()
+
+        if(DEFINED ${optionName})
+            set(optionDefault ${${optionName}})
+        endif()
+        set(${optionName} ${optionDefault} CACHE PATH "${optionComment}" FORCE)
+
+        foreach(optionTarget ${optionTargets})
+            target_compile_definitions(${optionTarget} PRIVATE ${optionName}="${optionDefault}")
+        endforeach()
+
+    elseif("${optionType}" STREQUAL "FILE")
+        list(LENGTH optionVariants size)
+        if(${size} GREATER 1)
+            message(FATAL_ERROR "add_option: FILE: too many defaults.")
+        endif()
+        if("${optionComment}" STREQUAL "")
+            set(optionComment " File option")
+        endif()
+
+        if(DEFINED ${optionName})
+            set(optionDefault ${${optionName}})
+        endif()
+        set(${optionName} ${optionDefault} CACHE FILEPATH "${optionComment}" FORCE)
+
+        foreach(optionTarget ${optionTargets})
+            target_compile_definitions(${optionTarget} PRIVATE ${optionName}="${optionDefault}")
+        endforeach()
+
+    else()
+        message(FATAL_ERROR "add_option: <TYPE> must be one of (BOOL | ENUM | STRING | DIR | FILE).")
+    endif()
+
+endfunction(add_option)
+
+
+# @param SOURCES    Directory where lupdate will look for C++ sources
+# @param TS_FILES   List of generated *.ts files
+# @param QM_DIR     Directory for generated *.qm files
 function(qt5_create_ts_and_qm)
     set(options)
     set(oneValueArgs SOURCES QM_DIR)
     set(multiValueArgs TS_FILES)
-    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" "${ARGN}")
+    cmake_parse_arguments(arg "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     file(MAKE_DIRECTORY "${arg_QM_DIR}")
 
