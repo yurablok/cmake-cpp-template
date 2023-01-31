@@ -1,18 +1,18 @@
 {
   "version": 3,
   "buildPresets": [
-    { "name": "x64-Debug-Linux", "displayName": "Preset", "configurePreset": "x64-Debug-Linux" },
-    { "name": "x64-Release-Linux", "displayName": "Preset", "configurePreset": "linux-default" },
-    { "name": "x64-RelNoDebInfo-Linux", "displayName": "Preset", "configurePreset": "x64-RelNoDebInfo-Linux" },
-    { "name": "x32-Debug-Windows", "displayName": "Preset", "configurePreset": "x32-Debug-Windows" },
-    { "name": "x32-Release-Windows", "displayName": "Preset", "configurePreset": "x32-Release-Windows" },
-    { "name": "x32-RelNoDebInfo-Windows", "displayName": "Preset", "configurePreset": "x32-RelNoDebInfo-Windows" },
-    { "name": "x64-Debug-Windows", "displayName": "Preset", "configurePreset": "x64-Debug-Windows" },
-    { "name": "x64-Release-Windows", "displayName": "Preset", "configurePreset": "windows-default" },
-    { "name": "x64-RelNoDebInfo-Windows", "displayName": "Preset", "configurePreset": "x64-RelNoDebInfo-Windows" },
-    { "name": "arm64-Debug-Windows", "displayName": "Preset", "configurePreset": "arm64-Debug-Windows" },
-    { "name": "arm64-Release-Windows", "displayName": "Preset", "configurePreset": "arm64-Release-Windows" },
-    { "name": "arm64-RelNoDebInfo-Windows", "displayName": "Preset", "configurePreset": "arm64-RelNoDebInfo-Windows" }
+    { "name": "x64-Debug-Linux", "configurePreset": "x64-Debug-Linux" },
+    { "name": "x64-Release-Linux", "configurePreset": "linux-default" },
+    { "name": "x64-RelNoDebInfo-Linux", "configurePreset": "x64-RelNoDebInfo-Linux" },
+    { "name": "x32-Debug-Windows", "configurePreset": "x32-Debug-Windows" },
+    { "name": "x32-Release-Windows", "configurePreset": "x32-Release-Windows" },
+    { "name": "x32-RelNoDebInfo-Windows", "configurePreset": "x32-RelNoDebInfo-Windows" },
+    { "name": "x64-Debug-Windows", "configurePreset": "x64-Debug-Windows" },
+    { "name": "x64-Release-Windows", "configurePreset": "windows-default" },
+    { "name": "x64-RelNoDebInfo-Windows", "configurePreset": "x64-RelNoDebInfo-Windows" },
+    { "name": "arm64-Debug-Windows", "configurePreset": "arm64-Debug-Windows" },
+    { "name": "arm64-Release-Windows", "configurePreset": "arm64-Release-Windows" },
+    { "name": "arm64-RelNoDebInfo-Windows", "configurePreset": "arm64-RelNoDebInfo-Windows" }
   ],
   "configurePresets": [
     {

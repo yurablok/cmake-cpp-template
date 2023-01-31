@@ -2,25 +2,21 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.5  2023-Feb-22     Added `fetch_git`.
 # v0.4  2023-Feb-20     Added git commands.
 # v0.3  2023-Jan-24     Added `add_option`.
 # v0.2  2022-Dec-24     Added support for Windows ARM64.
 # v0.1  2022-Oct-18     First release.
 
-# Call it before the main `project(...)`
-macro(check_build_directory)
-    if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-        message(FATAL_ERROR "In-source builds not allowed. Please use a build directory.")
-    else()
-        message("${CMAKE_BINARY_DIR}")
-    endif()
-    if("${CMAKE_BUILD_TYPE}" STREQUAL "")
-        set(default_build_type "RelWithDebInfo")
-        set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-    endif()
-endmacro(check_build_directory)
+# Include this file before the main `project(...)`
 
 
+#  ██ ███    ██ ██ ████████     ██████  ██████   ██████       ██ ███████  ██████ ████████ 
+#  ██ ████   ██ ██    ██        ██   ██ ██   ██ ██    ██      ██ ██      ██         ██    
+#  ██ ██ ██  ██ ██    ██        ██████  ██████  ██    ██      ██ █████   ██         ██    
+#  ██ ██  ██ ██ ██    ██        ██      ██   ██ ██    ██ ██   ██ ██      ██         ██    
+#  ██ ██   ████ ██    ██        ██      ██   ██  ██████   █████  ███████  ██████    ██    
+#                                                                                         
 # Call it after the main `project(...)` and before any `add_subdirectory(...)`
 # Example:
 #   init_project("client --ip=localhost" "server")
@@ -91,6 +87,8 @@ function(init_project)
         set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     endif()
 
+    cmake_policy(SET CMP0069 NEW)
+    set(CMAKE_POLICY_DEFAULT_CMP0069 NEW PARENT_SCOPE)
     if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         #NOTE: Link-Time Global Optimization
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE PARENT_SCOPE)
@@ -129,6 +127,7 @@ function(init_project)
         #NOTE: When changing the Qt5_DIR, you may need to manually delete CMakeCache.txt
         __find_msvc_qt5("C;D;E" "5.15.2")
         __write_msvs_launch_vs_json("${arg_UNPARSED_ARGUMENTS}")
+        #__crutch_for_msvs_bug_with_merges()
 
     elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "(GNU|Clang)")
         # -O3 -g0   3.4 MB  default Release
@@ -140,9 +139,9 @@ function(init_project)
         # of the program that you don’t plan to debug. This includes descriptions of
         # functions and external variables, and line number tables, but no information
         # about local variables.
-        set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g1 -DNDEBUG" PARENT_SCOPE)
-        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g1 -DNDEBUG" PARENT_SCOPE)
-
+        set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
+        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
+        
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             add_compile_options(-fdiagnostics-color=always)
         elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -154,6 +153,13 @@ function(init_project)
     else()
         message(FATAL_ERROR "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
     endif()
+
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+    set(CMAKE_C_STANDARD 17)
+    set(CMAKE_C_STANDARD_REQUIRED OFF)
+    set(CMAKE_C_EXTENSIONS OFF)
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(Qt5Path "${Qt5x64Path}" PARENT_SCOPE)
@@ -170,6 +176,12 @@ function(init_project)
 endfunction(init_project)
 
 
+#   █████  ██████  ██████       ██████  ██████  ████████ ██  ██████  ███    ██ 
+#  ██   ██ ██   ██ ██   ██     ██    ██ ██   ██    ██    ██ ██    ██ ████   ██ 
+#  ███████ ██   ██ ██   ██     ██    ██ ██████     ██    ██ ██    ██ ██ ██  ██ 
+#  ██   ██ ██   ██ ██   ██     ██    ██ ██         ██    ██ ██    ██ ██  ██ ██ 
+#  ██   ██ ██████  ██████       ██████  ██         ██    ██  ██████  ██   ████ 
+#                                                                              
 # @param [0]                Type: BOOL | ENUM | STRING | DIR | FILE
 # @param [1]                Option's name. Prefix "OPTION_" will be added.
 # @param [2] (optional)     Default variant
@@ -338,13 +350,146 @@ function(add_option)
 endfunction(add_option)
 
 
+#   ██████  ██ ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
+#  ██       ██    ██        ██    ██    ██    ██ ██      ██    ██    ██      ██      
+#  ██   ███ ██    ██        ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
+#  ██    ██ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██ 
+#   ██████  ██    ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+
+# @param directory  Target directory to download sources.
+# @param address    Git-compatible address of a repository.
+# @param tag        Desired branch | tag | hash.
+function(fetch_git directory address tag)
+    get_filename_component(absolutePath ${directory} ABSOLUTE)
+    file(RELATIVE_PATH relativePath ${CMAKE_SOURCE_DIR} ${absolutePath})
+    message("fetch_git: checking \"${relativePath}\"...")
+
+    if(NOT EXISTS "${absolutePath}/.git/HEAD")
+        message("fetch_git: downloading \"${relativePath}\"...")
+
+        get_filename_component(absoluteParentPath "${absolutePath}/../" ABSOLUTE)
+        file(MAKE_DIRECTORY ${absoluteParentPath})
+
+        string(LENGTH ${absoluteParentPath} length)
+        math(EXPR length "${length}+1")
+        string(SUBSTRING ${absolutePath} ${length} -1 folder)
+
+        execute_process(
+            WORKING_DIRECTORY ${absoluteParentPath}
+            COMMAND git clone --branch ${tag} --single-branch --recurse-submodules ${address} ${folder}
+            OUTPUT_VARIABLE output
+            ERROR_VARIABLE error
+            RESULT_VARIABLE result
+        )
+        # Normal + branch | tag
+        #   output=
+        #   error=Cloning into 'repo123'...
+        #   result=0
+        # Normal + hash
+        #   output=
+        #   error=Cloning into 'repo123'...
+        #         warning: Could not find remote branch 1234567 to clone.
+        #         fatal: Remote branch 1234567 not found in upstream origin
+        #   result=128
+        # Error 128 (not empty)
+        #   output=
+        #   error=fatal: destination path 'repo123' already exists and is not an empty directory.
+        #   result=128
+        # Error 128 (unreachable)
+        #   output=
+        #   error=Cloning into 'repo123'...
+        #         fatal: unable to access 'https://....': Could not resolve host: ....
+        #   result=128
+        if(NOT ${result} EQUAL 0)
+            string(FIND "${error}" "not found in upstream" result)
+            if(${result} GREATER 0)
+                execute_process(
+                    WORKING_DIRECTORY ${absoluteParentPath}
+                    COMMAND git clone --single-branch --recurse-submodules ${address} ${folder}
+                    OUTPUT_VARIABLE output
+                    ERROR_VARIABLE error
+                    RESULT_VARIABLE result
+                )
+                if(NOT ${result} EQUAL 0)
+                    message(FATAL_ERROR "fetch_git: ${error}")
+                endif()
+
+                execute_process(
+                    WORKING_DIRECTORY ${absolutePath}
+                    COMMAND git checkout --recurse-submodules ${tag}
+                    OUTPUT_VARIABLE output
+                    ERROR_VARIABLE error
+                    RESULT_VARIABLE result
+                )
+                # Normal + hash
+                #   output=
+                #   error=Note: switching to '1234567'.
+                #         You are in 'detached HEAD' state.
+                #   result=0
+                # Error 1
+                #   output=
+                #   error=error: pathspec '1234567' did not match any file(s) known to git
+                #   result=1
+            endif()
+        endif()
+
+        if(NOT ${result} EQUAL 0)
+            message(FATAL_ERROR "fetch_git: ${error}")
+        endif()
+
+    else()
+        execute_process(
+            WORKING_DIRECTORY ${absolutePath}
+            COMMAND git checkout --recurse-submodules ${tag}
+            OUTPUT_VARIABLE output
+            ERROR_VARIABLE error
+            RESULT_VARIABLE result
+        )
+        # Error 1 (no match)
+        #   output=
+        #   error=error: pathspec '2.5.1' did not match any file(s) known to git
+        #   result=1
+        if(NOT ${result} EQUAL 0)
+            message("fetch_git: fetching \"${relativePath}\"...")
+            file(REMOVE "${absolutePath}/.git/index.lock")
+
+            execute_process(
+                WORKING_DIRECTORY ${absolutePath}
+                COMMAND git fetch --all --tags --recurse-submodules
+                OUTPUT_VARIABLE output
+                ERROR_VARIABLE error
+                RESULT_VARIABLE result
+            )
+            if(NOT ${result} EQUAL 0)
+                message(FATAL_ERROR "fetch_git: ${error}")
+            endif()
+
+            execute_process(
+                WORKING_DIRECTORY ${absolutePath}
+                COMMAND git checkout --recurse-submodules --force ${tag}
+                OUTPUT_VARIABLE output
+                ERROR_VARIABLE error
+                RESULT_VARIABLE result
+            )
+        endif()
+
+        if(NOT ${result} EQUAL 0)
+            message(FATAL_ERROR "fetch_git: ${error}")
+        endif()
+
+    endif()
+
+    message("fetch_git: \"${relativePath}\" is ready")
+endfunction(fetch_git)
+
+
 # @param[out] OUT_RESULT        Resulting output of our command
 # @param      COMMAND_          Our git command
 function(git_do_command OUT_RESULT COMMAND_)
     set(_execute_command git ${COMMAND_} ${ARGN})
 
     execute_process(COMMAND ${_execute_command}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}     # Optional, for safety
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         OUTPUT_VARIABLE output
         ERROR_VARIABLE error_output
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -379,7 +524,6 @@ function(git_commits_count_by_regex REGEX OUT_COMMITS_COUNT)
     set(${GIT_COMMIT_HASH} ${commit_hash} PARENT_SCOPE)
 endfunction(git_commits_count_by_regex)
 
-
 # @param      TAG                Desired tag to counting to
 # @param[out] OUT_COMMITS_COUNT  Resulting number of commits to the desired tag
 function(git_commits_count_by_tag TAG OUT_COMMITS_COUNT)
@@ -388,6 +532,12 @@ function(git_commits_count_by_tag TAG OUT_COMMITS_COUNT)
 endfunction(git_commits_count_by_tag)
 
 
+#   ██████  ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
+#  ██    ██    ██        ██    ██    ██    ██ ██      ██    ██    ██      ██      
+#  ██    ██    ██        ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
+#  ██ ▄▄ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██ 
+#   ██████     ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+#      ▀▀                                                                         
 # @param SOURCES    Directory where lupdate will look for C++ sources
 # @param TS_FILES   List of generated *.ts files
 # @param QM_DIR     Directory for generated *.qm files
@@ -527,15 +677,14 @@ function(__find_msvc_qt5 drives qtVersion)
 endfunction(__find_msvc_qt5)
 
 
+#  ██ ██████  ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
+#  ██ ██   ██ ██          ██    ██    ██    ██ ██      ██    ██    ██      ██      
+#  ██ ██   ██ █████       ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
+#  ██ ██   ██ ██          ██    ██    ██    ██ ██      ██    ██    ██           ██ 
+#  ██ ██████  ███████      ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+
 function(__write_msvs_launch_vs_json targets)
     set(cfgPath "${CMAKE_SOURCE_DIR}/.vs/launch.vs.json")
-        #set(cfgSize_b 0)
-    #if(EXISTS "${cfgPath}")
-    #    file(SIZE "${cfgPath}" cfgSize_b)
-    #endif()
-    #if(cfgSize_b GREATER 100)
-    #    return()
-    #endif()
 
     file(WRITE "${cfgPath}" "reload") # Reload the config by using some JSON-error
 
@@ -563,14 +712,14 @@ function(__write_msvs_launch_vs_json targets)
     endmacro(add)
 
     foreach(target ${targets})
-        string(REGEX MATCH "^([_a-zA-Z0-9]+)[ ]*(.*)$" matched "${target}")
+        string(REGEX MATCH "^([-_a-zA-Z0-9]+)[ ]*(.*)$" matched "${target}")
         if(${CMAKE_MATCH_COUNT} EQUAL 0)
             message(FATAL_ERROR "Wrong target format (actual='${target}', expected='name args').")
         endif()
 
         set(targetName ${CMAKE_MATCH_1})
         set(targetArgs ${CMAKE_MATCH_2})
-        message("targetName=${targetName} targetArgs=[${targetArgs}]")
+        #message("targetName=${targetName} targetArgs=[${targetArgs}]")
 
         add("x32-Debug-Windows/Debug"              "${Qt5x32Path}" "${targetName}" "${targetArgs}")
         add("x32-Release-Windows/RelWithDebInfo"   "${Qt5x32Path}" "${targetName}" "${targetArgs}")
@@ -588,6 +737,27 @@ function(__write_msvs_launch_vs_json targets)
 
     file(WRITE "${cfgPath}" "${json}")
 endfunction(__write_msvs_launch_vs_json)
+
+
+# CPU leak by:
+#  "C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/ServiceHub/Hosts/ServiceHub.Host.Dotnet.arm64/ServiceHub.IndexingService.exe"
+# Memory leak in:
+#  "C:/..../myproject/.vs/myproject/FileContentIndex/merges"
+# https://stackoverflow.com/questions/72237599/how-to-disable-that-new-filecontentindex-folder-and-vsidx-files-in-vs-2022
+# "C:/Program Files/Microsoft Visual Studio/2022/Community/Common7/IDE/CommonExtensions/Microsoft/Editor/ServiceHub/Indexing.servicehub.service.json"
+function(__crutch_for_msvs_bug_with_merges)
+    get_filename_component(absolutePatentPath "${CMAKE_SOURCE_DIR}/../" ABSOLUTE)
+    set(absolutePath "${CMAKE_SOURCE_DIR}")
+    string(LENGTH ${absolutePatentPath} length)
+    math(EXPR length "${length}+1")
+    string(SUBSTRING ${absolutePath} ${length} -1 folder)
+    set(mergesPath "${CMAKE_SOURCE_DIR}/.vs/${folder}/FileContentIndex/merges")
+
+    if(EXISTS "${mergesPath}/")
+        file(REMOVE_RECURSE "${mergesPath}/")
+        file(TOUCH "${mergesPath}")
+    endif()
+endfunction(__crutch_for_msvs_bug_with_merges)
 
 
 function(copy_release_file_to_workdir frompath topath)
@@ -625,6 +795,22 @@ macro(copy_release_lib_to_workdir basename)
 endmacro(copy_release_lib_to_workdir)
 
 
-if("${RUN}" STREQUAL "qt5_create_ts_and_qm")
+if("${RUN}" STREQUAL "")
+    if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
+        message(FATAL_ERROR
+            "In-source builds not allowed. Please use a build directory.\n"
+            "For example: \"build/.cmake/x64-Release-Linux\""
+        )
+    else()
+        message("${CMAKE_BINARY_DIR}")
+    endif()
+
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "")
+        set(default_build_type "RelWithDebInfo")
+        set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+    endif()
+
+elseif("${RUN}" STREQUAL "qt5_create_ts_and_qm")
     __qt5_create_ts_and_qm_impl()
+
 endif()

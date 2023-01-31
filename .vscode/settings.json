@@ -4,7 +4,7 @@
 
     "editor.defaultFormatter": "ms-vscode.cpptools",
     "editor.rulers": [ 80, 100 ],
-    "editor.cursorStyle": "block",
+    //"editor.cursorStyle": "block",
     "editor.minimap.enabled": false,
     "[Log]": { "editor.wordWrap": "on" },
 

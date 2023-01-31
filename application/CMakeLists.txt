@@ -5,9 +5,11 @@ project(application VERSION 0.0.1 LANGUAGES CXX C)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 # Qt
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
+if(Qt5_DIR)
+    set(CMAKE_AUTOUIC ON)
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+endif()
 
 add_executable(${PROJECT_NAME})
 copy_release_app_to_workdir("${PROJECT_NAME}")
