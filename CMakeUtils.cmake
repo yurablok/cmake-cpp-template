@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.4  2023-Feb-20     Added git commands.
 # v0.3  2023-Jan-24     Added `add_option`.
 # v0.2  2022-Dec-24     Added support for Windows ARM64.
 # v0.1  2022-Oct-18     First release.
@@ -18,6 +19,7 @@ macro(check_build_directory)
         set(CMAKE_BUILD_TYPE "RelWithDebInfo")
     endif()
 endmacro(check_build_directory)
+
 
 # Call it after the main `project(...)` and before any `add_subdirectory(...)`
 # Example:
@@ -140,7 +142,7 @@ function(init_project)
         # about local variables.
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g1 -DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g1 -DNDEBUG" PARENT_SCOPE)
-        
+
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             add_compile_options(-fdiagnostics-color=always)
         elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -334,6 +336,56 @@ function(add_option)
     endif()
 
 endfunction(add_option)
+
+
+# @param[out] OUT_RESULT        Resulting output of our command
+# @param      COMMAND_          Our git command
+function(git_do_command OUT_RESULT COMMAND_)
+    set(_execute_command git ${COMMAND_} ${ARGN})
+
+    execute_process(COMMAND ${_execute_command}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}     # Optional, for safety
+        OUTPUT_VARIABLE output
+        ERROR_VARIABLE error_output
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    if(NOT error_output STREQUAL "")
+        set(${OUT_RESULT} ${error_output} PARENT_SCOPE)
+        return()
+    endif()
+    set(${OUT_RESULT} ${output} PARENT_SCOPE)
+endfunction(git_do_command)
+
+
+# @param[out] OUT_BRANCH         Resulting name of the current branch if not detached
+function(git_branch OUT_BRANCH)
+    git_do_command(output rev-parse --abbrev-ref HEAD)
+    set(${OUT_BRANCH} ${output} PARENT_SCOPE)
+endfunction(git_branch)
+
+
+# @param      REGEX              Desired regex to match a commit by its message
+# @param[out] OUT_COMMITS_COUNT  Resulting number of commits from HEAD to the first matched commit
+# @param[out] GIT_COMMIT_HASH    Resulting hash of the first matched commit
+function(git_commits_count_by_regex REGEX OUT_COMMITS_COUNT)
+    git_do_command(commit_hash rev-list HEAD --grep=\"${REGEX}\" -n 1)
+    if("${commit_hash}" STREQUAL "")
+        message(FATAL_ERROR "[git_commits_count_by_regex] Bad git revision")
+    endif()
+    git_do_command(output rev-list --count HEAD ^${commit_hash})
+
+    set(${OUT_COMMITS_COUNT} ${output} PARENT_SCOPE)
+    set(${GIT_COMMIT_HASH} ${commit_hash} PARENT_SCOPE)
+endfunction(git_commits_count_by_regex)
+
+
+# @param      TAG                Desired tag to counting to
+# @param[out] OUT_COMMITS_COUNT  Resulting number of commits to the desired tag
+function(git_commits_count_by_tag TAG OUT_COMMITS_COUNT)
+    git_do_command(output rev-list --count HEAD ^${TAG})
+    set(${OUT_COMMITS_COUNT} ${output} PARENT_SCOPE)
+endfunction(git_commits_count_by_tag)
 
 
 # @param SOURCES    Directory where lupdate will look for C++ sources
