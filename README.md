@@ -16,6 +16,8 @@ work using VSCode and MS VisualStudio.
   - `build/.cmake/arch_type_platform/`
 - A single shared working directory to minimize duplication of runtime resources.
   - `workdir/`
+- Git utilities.
+  - `git_commits_count_by_regex` & `git_commits_count_by_tag`.
 - Qt5 support.
   - Autosearch (simple) for Qt5 libraries if `Qt5_DIR` is not specified.
   - Custom `qt5_create_ts_and_qm(...)` that minimizes calls of `lrelease` if `lupdate`
