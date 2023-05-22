@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.6  2023-May-22     Added `--filter=tree:0` and removed `--single-branch` in `fetch_git`.
 # v0.5  2023-Feb-22     Added `fetch_git`.
 # v0.4  2023-Feb-20     Added git commands.
 # v0.3  2023-Jan-24     Added `add_option`.
@@ -376,7 +377,7 @@ function(fetch_git directory address tag)
 
         execute_process(
             WORKING_DIRECTORY ${absoluteParentPath}
-            COMMAND git clone --branch ${tag} --single-branch --recurse-submodules ${address} ${folder}
+            COMMAND git clone --branch ${tag} --filter=tree:0 --recurse-submodules ${address} ${folder}
             OUTPUT_VARIABLE output
             ERROR_VARIABLE error
             RESULT_VARIABLE result
@@ -405,7 +406,7 @@ function(fetch_git directory address tag)
             if(${result} GREATER 0)
                 execute_process(
                     WORKING_DIRECTORY ${absoluteParentPath}
-                    COMMAND git clone --single-branch --recurse-submodules ${address} ${folder}
+                    COMMAND git clone --filter=tree:0 --recurse-submodules ${address} ${folder}
                     OUTPUT_VARIABLE output
                     ERROR_VARIABLE error
                     RESULT_VARIABLE result
