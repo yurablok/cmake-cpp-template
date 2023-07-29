@@ -28,12 +28,15 @@
         "CMAKE_CONFIGURATION_TYPES": "${buildType}"
     },
     "cmake.setBuildTypeOnMultiConfig": true,
-    "cmake.buildTask": true,
+    //"cmake.buildTask": true,
 
     "cmake.buildDirectory": "${workspaceFolder}/build/.cmake/${buildType}-${generator}",
     "cmake.debugConfig": {
         "cwd": "${workspaceFolder}/workdir",
-        "args": [ "--test-arg" ]
+        "args": [ "--test-arg" ],
+        //"MIMode": "lldb", //NOTE: on MacOS
+        "externalConsole": false,
+        "logging": { "programOutput": true, "moduleLoad": false }
     },
     "cmake.statusbar.advanced": {
         "status": { "visibility": "compact" },
@@ -42,8 +45,5 @@
         "launch": { "visibility": "hidden" },
         "testPreset": { "visibility": "hidden" },
         "ctest": { "visibility": "hidden" }
-    },
-    "workbench.colorCustomizations": {
-        "statusBar.background": "#123456"
     }
 }

@@ -12,12 +12,12 @@
 # Include this file before the main `project(...)`
 
 
-#  ██ ███    ██ ██ ████████     ██████  ██████   ██████       ██ ███████  ██████ ████████ 
-#  ██ ████   ██ ██    ██        ██   ██ ██   ██ ██    ██      ██ ██      ██         ██    
-#  ██ ██ ██  ██ ██    ██        ██████  ██████  ██    ██      ██ █████   ██         ██    
-#  ██ ██  ██ ██ ██    ██        ██      ██   ██ ██    ██ ██   ██ ██      ██         ██    
-#  ██ ██   ████ ██    ██        ██      ██   ██  ██████   █████  ███████  ██████    ██    
-#                                                                                         
+#  ██ ███    ██ ██ ████████     ██████  ██████   ██████       ██ ███████  ██████ ████████
+#  ██ ████   ██ ██    ██        ██   ██ ██   ██ ██    ██      ██ ██      ██         ██
+#  ██ ██ ██  ██ ██    ██        ██████  ██████  ██    ██      ██ █████   ██         ██
+#  ██ ██  ██ ██ ██    ██        ██      ██   ██ ██    ██ ██   ██ ██      ██         ██
+#  ██ ██   ████ ██    ██        ██      ██   ██  ██████   █████  ███████  ██████    ██
+#
 # Call it after the main `project(...)` and before any `add_subdirectory(...)`
 # Example:
 #   init_project("client --ip=localhost" "server")
@@ -62,7 +62,7 @@ function(init_project)
 
     if(UNIX)
         if(APPLE)
-            set(BUILD_PLATFORM "Apple")
+            set(BUILD_PLATFORM "Mac")
         else()
             set(BUILD_PLATFORM "Linux")
         endif()
@@ -142,7 +142,7 @@ function(init_project)
         # about local variables.
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
-        
+
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             add_compile_options(-fdiagnostics-color=always)
         elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -177,12 +177,12 @@ function(init_project)
 endfunction(init_project)
 
 
-#   █████  ██████  ██████       ██████  ██████  ████████ ██  ██████  ███    ██ 
-#  ██   ██ ██   ██ ██   ██     ██    ██ ██   ██    ██    ██ ██    ██ ████   ██ 
-#  ███████ ██   ██ ██   ██     ██    ██ ██████     ██    ██ ██    ██ ██ ██  ██ 
-#  ██   ██ ██   ██ ██   ██     ██    ██ ██         ██    ██ ██    ██ ██  ██ ██ 
-#  ██   ██ ██████  ██████       ██████  ██         ██    ██  ██████  ██   ████ 
-#                                                                              
+#   █████  ██████  ██████       ██████  ██████  ████████ ██  ██████  ███    ██
+#  ██   ██ ██   ██ ██   ██     ██    ██ ██   ██    ██    ██ ██    ██ ████   ██
+#  ███████ ██   ██ ██   ██     ██    ██ ██████     ██    ██ ██    ██ ██ ██  ██
+#  ██   ██ ██   ██ ██   ██     ██    ██ ██         ██    ██ ██    ██ ██  ██ ██
+#  ██   ██ ██████  ██████       ██████  ██         ██    ██  ██████  ██   ████
+#
 # @param [0]                Type: BOOL | ENUM | STRING | DIR | FILE
 # @param [1]                Option's name. Prefix "OPTION_" will be added.
 # @param [2] (optional)     Default variant
@@ -351,11 +351,11 @@ function(add_option)
 endfunction(add_option)
 
 
-#   ██████  ██ ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
-#  ██       ██    ██        ██    ██    ██    ██ ██      ██    ██    ██      ██      
-#  ██   ███ ██    ██        ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
-#  ██    ██ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██ 
-#   ██████  ██    ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+#   ██████  ██ ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
+#  ██       ██    ██        ██    ██    ██    ██ ██      ██    ██    ██      ██
+#  ██   ███ ██    ██        ██    ██    ██    ██ ██      ██    ██    █████   ███████
+#  ██    ██ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██
+#   ██████  ██    ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████
 
 # @param directory  Target directory to download sources.
 # @param address    Git-compatible address of a repository.
@@ -533,12 +533,12 @@ function(git_commits_count_by_tag TAG OUT_COMMITS_COUNT)
 endfunction(git_commits_count_by_tag)
 
 
-#   ██████  ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
-#  ██    ██    ██        ██    ██    ██    ██ ██      ██    ██    ██      ██      
-#  ██    ██    ██        ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
-#  ██ ▄▄ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██ 
-#   ██████     ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
-#      ▀▀                                                                         
+#   ██████  ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
+#  ██    ██    ██        ██    ██    ██    ██ ██      ██    ██    ██      ██
+#  ██    ██    ██        ██    ██    ██    ██ ██      ██    ██    █████   ███████
+#  ██ ▄▄ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██
+#   ██████     ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████
+#      ▀▀
 # @param SOURCES    Directory where lupdate will look for C++ sources
 # @param TS_FILES   List of generated *.ts files
 # @param QM_DIR     Directory for generated *.qm files
@@ -678,11 +678,11 @@ function(__find_msvc_qt5 drives qtVersion)
 endfunction(__find_msvc_qt5)
 
 
-#  ██ ██████  ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
-#  ██ ██   ██ ██          ██    ██    ██    ██ ██      ██    ██    ██      ██      
-#  ██ ██   ██ █████       ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
-#  ██ ██   ██ ██          ██    ██    ██    ██ ██      ██    ██    ██           ██ 
-#  ██ ██████  ███████      ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+#  ██ ██████  ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
+#  ██ ██   ██ ██          ██    ██    ██    ██ ██      ██    ██    ██      ██
+#  ██ ██   ██ █████       ██    ██    ██    ██ ██      ██    ██    █████   ███████
+#  ██ ██   ██ ██          ██    ██    ██    ██ ██      ██    ██    ██           ██
+#  ██ ██████  ███████      ██████     ██    ██ ███████ ██    ██    ███████ ███████
 
 function(__write_msvs_launch_vs_json targets)
     set(cfgPath "${CMAKE_SOURCE_DIR}/.vs/launch.vs.json")
