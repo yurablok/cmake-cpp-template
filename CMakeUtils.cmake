@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.7  2023-Dec-27     Added `breakpad_dump_and_strip`.
 # v0.6  2023-May-22     Added `--filter=tree:0` and removed `--single-branch` in `fetch_git`.
 # v0.5  2023-Feb-22     Added `fetch_git`.
 # v0.4  2023-Feb-20     Added git commands.
@@ -32,23 +33,25 @@ function(init_project)
         message(FATAL_ERROR "At least one target must be specified.")
     endif()
 
-    if(NOT "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "")
-        set(CMAKE_TARGET_ARCH ${CMAKE_CXX_COMPILER_ARCHITECTURE_ID})
-    else()
-        set(CMAKE_TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
-    endif()
-    message("CMAKE_TARGET_ARCH: ${CMAKE_TARGET_ARCH}")
-    if("${CMAKE_TARGET_ARCH}" MATCHES "(arm|ARM|aarch).*")
-        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-            set(BUILD_ARCH "arm64")
+    if("${BUILD_ARCH}" STREQUAL "")
+        if(NOT "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "")
+            set(CMAKE_TARGET_ARCH ${CMAKE_CXX_COMPILER_ARCHITECTURE_ID})
         else()
-            set(BUILD_ARCH "arm32")
+            set(CMAKE_TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
         endif()
-    else()
-        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-            set(BUILD_ARCH "x64")
+        message("CMAKE_TARGET_ARCH: ${CMAKE_TARGET_ARCH}")
+        if("${CMAKE_TARGET_ARCH}" MATCHES "(arm|ARM|aarch).*")
+            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                set(BUILD_ARCH "arm64")
+            else()
+                set(BUILD_ARCH "arm32")
+            endif()
         else()
-            set(BUILD_ARCH "x32")
+            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                set(BUILD_ARCH "x64")
+            else()
+                set(BUILD_ARCH "x32")
+            endif()
         endif()
     endif()
 
@@ -90,7 +93,7 @@ function(init_project)
 
     cmake_policy(SET CMP0069 NEW)
     set(CMAKE_POLICY_DEFAULT_CMP0069 NEW PARENT_SCOPE)
-    if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         #NOTE: Link-Time Global Optimization
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
@@ -107,7 +110,7 @@ function(init_project)
             add_compile_options(-fcolor-diagnostics)
         endif()
 
-        if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             add_compile_options(
                 /JMC # Just My Code Debugging
                 /ZI # Debug Information with Edit and Continue
@@ -552,6 +555,7 @@ endfunction(git_commits_count_by_tag)
 #  ██ ▄▄ ██    ██        ██    ██    ██    ██ ██      ██    ██    ██           ██
 #   ██████     ██         ██████     ██    ██ ███████ ██    ██    ███████ ███████
 #      ▀▀
+
 # @param SOURCES    Directory where lupdate will look for C++ sources
 # @param TS_FILES   List of generated *.ts files
 # @param QM_DIR     Directory for generated *.qm files
@@ -689,6 +693,90 @@ function(__find_msvc_qt5 drives qtVersion)
         message("Qt5x64Path: ${qtPath}")
     endif()
 endfunction(__find_msvc_qt5)
+
+
+#  ██████  ██████  ███████  █████  ██   ██ ██████   █████  ██████      ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
+#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██   ██ ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██      ██      
+#  ██████  ██████  █████   ███████ █████   ██████  ███████ ██   ██     ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
+#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██      ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██           ██ 
+#  ██████  ██   ██ ███████ ██   ██ ██   ██ ██      ██   ██ ██████       ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+
+# @param targetName             Target name for which the symbols will be dumped
+# @param BREAKPAD_DUMP_SYMS     Path to the Breakpad's dump_syms executable.
+# @param CMAKE_STRIP (optional) Path to the strip executable if the target platform is different.
+function(breakpad_dump_and_strip targetName)
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        return()
+    endif()
+    if(NOT TARGET ${targetName})
+        message(FATAL_ERROR "breakpad_dump_and_strip: wrong target ${targetName}")
+    endif()
+    if(${BUILD_PLATFORM} STREQUAL "Windows")
+        return()
+    elseif(NOT ${BUILD_PLATFORM} STREQUAL "Linux")
+        message(WARNING "breakpad_dump_and_strip: ${BUILD_PLATFORM} platform has not been tested")
+        return()
+    endif()
+    if("${BREAKPAD_DUMP_SYMS}" STREQUAL "")
+        message(WARNING "breakpad_dump_and_strip: BREAKPAD_DUMP_SYMS is not specified")
+        return()
+    endif()
+    if(NOT EXISTS "${BREAKPAD_DUMP_SYMS}")
+        message(FATAL_ERROR "breakpad_dump_and_strip: dump_syms is not found (path: ${BREAKPAD_DUMP_SYMS})")
+    endif()
+
+    add_custom_command(
+        VERBATIM
+        TARGET ${targetName} POST_BUILD
+        WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+        COMMAND ${CMAKE_COMMAND}
+            -DRUN=breakpad_dump_and_strip
+    
+            -DBREAKPAD_DUMP_SYMS=${BREAKPAD_DUMP_SYMS}
+            -DCMAKE_STRIP=${CMAKE_STRIP}
+            -DTARGET_FILE=${targetName}
+    
+            -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
+    )
+endfunction(breakpad_dump_and_strip)
+
+function(__breakpad_dump_and_strip)
+    execute_process(
+        COMMAND "${BREAKPAD_DUMP_SYMS}" -i ${TARGET_FILE}
+        OUTPUT_VARIABLE result
+    )
+    # "MODULE Linux arm64 912C385C93DFB00C2B4D31F83BFF5BF90 TARGET_FILE"
+    string(REGEX MATCH "MODULE[ ]+[a-zA-Z0-9]+[ ]+[a-zA-Z0-9]+[ ]+([a-zA-Z0-9]+)[ ]+" result ${result})
+    set(buildId "${CMAKE_MATCH_1}")
+    message("${TARGET_FILE} build id: ${buildId}")
+    file(MAKE_DIRECTORY "symbols/${TARGET_FILE}/${buildId}/")
+
+    execute_process(
+        COMMAND "${BREAKPAD_DUMP_SYMS}" ${TARGET_FILE}
+        OUTPUT_VARIABLE result
+    )
+    file(WRITE "symbols/${TARGET_FILE}/${buildId}/${TARGET_FILE}.sym" "${result}")
+
+    cmake_minimum_required(VERSION 3.18)
+    file(ARCHIVE_CREATE
+        OUTPUT "${TARGET_FILE}.sym.zip"
+        PATHS "symbols/${TARGET_FILE}/${buildId}/${TARGET_FILE}.sym"
+        FORMAT zip
+    )
+    file(REMOVE_RECURSE "symbols")
+
+    if("${CMAKE_STRIP}" STREQUAL "")
+        execute_process(
+            COMMAND strip ${TARGET_FILE}
+        )
+    else()
+        execute_process(
+            COMMAND "${CMAKE_STRIP}" ${TARGET_FILE}
+        )
+    endif()
+
+    message("${TARGET_FILE}.sym.zip created")
+endfunction(__breakpad_dump_and_strip)
 
 
 #  ██ ██████  ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
@@ -832,5 +920,8 @@ if("${RUN}" STREQUAL "")
 
 elseif("${RUN}" STREQUAL "qt5_create_ts_and_qm")
     __qt5_create_ts_and_qm_impl()
+
+elseif("${RUN}" STREQUAL "breakpad_dump_and_strip")
+    __breakpad_dump_and_strip()
 
 endif()
