@@ -1,0 +1,6 @@
+[submodule "deps/breakpad/breakpad"]
+	path = deps/breakpad/breakpad
+	url = https://chromium.googlesource.com/breakpad/breakpad
+[submodule "deps/breakpad/third_party/lss"]
+	path = deps/breakpad/third_party/lss
+	url = https://chromium.googlesource.com/linux-syscall-support

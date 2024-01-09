@@ -819,6 +819,7 @@ function(__write_msvs_launch_vs_json targets)
 
         set(targetName ${CMAKE_MATCH_1})
         set(targetArgs ${CMAKE_MATCH_2})
+        string(REPLACE "\"" "\\\\\"" targetArgs "${targetArgs}")
         #message("targetName=${targetName} targetArgs=[${targetArgs}]")
 
         add("x32-Debug-Windows/Debug"              "${Qt5x32Path}" "${targetName}" "${targetArgs}")
