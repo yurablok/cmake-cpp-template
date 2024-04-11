@@ -3,6 +3,7 @@
   //"C_Cpp.intelliSenseCacheSize": 0, // If disk storage is slow
   "C_Cpp.autoAddFileAssociations": false,
 
+  "editor.autoIndent": "advanced",
   "editor.defaultFormatter": "ms-vscode.cpptools",
   "editor.rulers": [ 80, 100 ],
   //"editor.cursorStyle": "block",
@@ -39,7 +40,15 @@
     "externalConsole": false,
     "logging": { "programOutput": true, "moduleLoad": false }
   },
-  "cmake.statusbar.advanced": {
+  "cmake.options.statusBarVisibility": "visible",
+  "cmake.options.advanced": {
+    "buildPreset": { "statusBarVisibility": "hidden" },
+    "ctest": { "statusBarVisibility": "icon" },
+    "cpack": { "statusBarVisibility": "icon" },
+    "workflowPreset": { "statusBarVisibility": "hidden" },
+    "workflow": { "statusBarVisibility": "hidden" }
+  },
+  "cmake.statusbar.advanced": { // For old compatibility
     "status": { "visibility": "compact" },
     //"kit": { "visibility": "compact" },
     // workdir can't be configured
