@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.12)
 
 project(application VERSION 0.0.1 LANGUAGES CXX C)
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
 # Qt
 if(Qt5_DIR)
     set(CMAKE_AUTOUIC ON)

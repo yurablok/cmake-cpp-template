@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.8  2024-May-01     Added flags `-fvisibility=hidden`, `MSVC_CPU_AUTO_LIMIT`.
 # v0.7  2023-Dec-27     Added `breakpad_dump_and_strip`.
 # v0.6  2023-May-22     Added `--filter=tree:0` and removed `--single-branch` in `fetch_git`.
 # v0.5  2023-Feb-22     Added `fetch_git`.
@@ -28,7 +29,7 @@ function(init_project)
         return()
     endif()
 
-    cmake_parse_arguments(arg "" "" "" ${ARGN})
+    cmake_parse_arguments(arg "" "" "" "${ARGN}")
     if(NOT DEFINED arg_UNPARSED_ARGUMENTS)
         message(FATAL_ERROR "At least one target must be specified.")
     endif()
@@ -88,7 +89,7 @@ function(init_project)
     if("${CMAKE_SYSROOT}" STREQUAL "")
         #NOTE: clangd linter config
         file(WRITE ".clangd" "CompileFlags:\n  CompilationDatabase: build/.cmake/${BUILD_FOLDER}\n")
-        set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+        set(CMAKE_EXPORT_COMPILE_COMMANDS ON PARENT_SCOPE)
     endif()
 
     cmake_policy(SET CMP0069 NEW)
@@ -100,20 +101,38 @@ function(init_project)
 
     if(MSVC)
         if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+            message("Compiler: MSVC v${CMAKE_CXX_COMPILER_VERSION}")
+            if(MSVC_CPU_AUTO_LIMIT)
+                cmake_host_system_information(RESULT totalCPU QUERY NUMBER_OF_LOGICAL_CORES)
+                message("NUMBER_OF_LOGICAL_CORES=${totalCPU}")
+                cmake_host_system_information(RESULT totalRAM_MiB QUERY AVAILABLE_PHYSICAL_MEMORY)
+                message("AVAILABLE_PHYSICAL_MEMORY=${totalRAM_MiB}")
+                math(EXPR maxCPU "${totalRAM_MiB} / 4096" OUTPUT_FORMAT DECIMAL)
+                message("maxCPU=${maxCPU}")
+                if(${maxCPU} GREATER ${totalCPU})
+                    set(maxCPU ${totalCPU})
+                endif()
+            endif()
+
+            if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+                add_compile_options(
+                    /ZI # Debug Information with Edit and Continue
+                )
+            endif()
             add_compile_options(
                 /utf-8 # Set source and execution character sets to UTF-8
                 /sdl # Enable Additional Security Checks
-                /MP # Build with Multiple Processes
+                "/MP ${maxCPU}" # Build with Multiple Processes
                 /permissive- # Standards conformance
             )
         else()
+            message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fcolor-diagnostics)
         endif()
 
         if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             add_compile_options(
                 /JMC # Just My Code Debugging
-                /ZI # Debug Information with Edit and Continue
             )
             add_link_options(
                 /INCREMENTAL # For Edit and Continue
@@ -146,7 +165,10 @@ function(init_project)
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
 
+        add_compile_options(-fvisibility=hidden)
+
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+            message("Compiler: GCC v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fdiagnostics-color=always)
             if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
                 add_link_options(-fuse-ld=gold)
@@ -157,6 +179,7 @@ function(init_project)
                 endif()
             endif()
         elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+            message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fcolor-diagnostics)
         endif()
 
@@ -166,17 +189,25 @@ function(init_project)
         message(FATAL_ERROR "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
     endif()
 
-    set(CMAKE_CXX_STANDARD 20 PARENT_SCOPE)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
+        set(CMAKE_CXX_STANDARD 26 PARENT_SCOPE)
+    elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.20)
+        set(CMAKE_CXX_STANDARD 23 PARENT_SCOPE)
+    else()
+        set(CMAKE_CXX_STANDARD 20 PARENT_SCOPE)
+    endif()
     set(CMAKE_CXX_STANDARD_REQUIRED OFF PARENT_SCOPE)
     set(CMAKE_CXX_EXTENSIONS OFF PARENT_SCOPE)
-    if(CMAKE_VERSION VERSION_LESS 3.21)
-        set(CMAKE_C_STANDARD 11 PARENT_SCOPE)
+
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
+        set(CMAKE_C_STANDARD 23 PARENT_SCOPE)
     else()
-        set(CMAKE_C_STANDARD 17 PARENT_SCOPE)
+        set(CMAKE_C_STANDARD 11 PARENT_SCOPE)
     endif()
     set(CMAKE_C_STANDARD_REQUIRED OFF PARENT_SCOPE)
     set(CMAKE_C_EXTENSIONS OFF PARENT_SCOPE)
-
+    set(CMAKE_INCLUDE_CURRENT_DIR ON PARENT_SCOPE)
+    
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(Qt5Path "${Qt5x64Path}" PARENT_SCOPE)
     else()
@@ -185,6 +216,7 @@ function(init_project)
     if(Qt5_DIR)
         set(Qt5_DIR "${Qt5_DIR}" PARENT_SCOPE)
     endif()
+
     set(BUILD_ARCH "${BUILD_ARCH}" PARENT_SCOPE)
     set(BUILD_TYPE "${BUILD_TYPE}" PARENT_SCOPE)
     set(BUILD_PLATFORM "${BUILD_PLATFORM}" PARENT_SCOPE)
