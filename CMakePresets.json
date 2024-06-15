@@ -1,189 +1,305 @@
 {
   "version": 3,
   "buildPresets": [
-    { "name": "x64-Debug-Linux", "configurePreset": "x64-Debug-Linux" },
-    { "name": "x64-Release-Linux", "configurePreset": "linux-default" },
-    { "name": "x64-RelNoDebInfo-Linux", "configurePreset": "x64-RelNoDebInfo-Linux" },
+    { "name": "x64-Debug-GCC", "configurePreset": "x64-Debug-GCC" },
+    { "name": "x64-Release-GCC", "configurePreset": "x64-Release-GCC" },
+
+    { "name": "x64-Debug-Clang", "configurePreset": "x64-Debug-Clang" },
+    { "name": "x64-Release-Clang", "configurePreset": "x64-Release-Clang" },
+
     { "name": "x64-Debug-Mac", "configurePreset": "x64-Debug-Mac" },
     { "name": "x64-Release-Mac", "configurePreset": "x64-Release-Mac" },
-    { "name": "x64-RelNoDebInfo-Mac", "configurePreset": "x64-RelNoDebInfo-Mac" },
-    { "name": "x32-Debug-Windows", "configurePreset": "x32-Debug-Windows" },
-    { "name": "x32-Release-Windows", "configurePreset": "x32-Release-Windows" },
-    { "name": "x32-RelNoDebInfo-Windows", "configurePreset": "x32-RelNoDebInfo-Windows" },
-    { "name": "x64-Debug-Windows", "configurePreset": "x64-Debug-Windows" },
-    { "name": "x64-Release-Windows", "configurePreset": "windows-default" },
-    { "name": "x64-RelNoDebInfo-Windows", "configurePreset": "x64-RelNoDebInfo-Windows" },
-    { "name": "arm64-Debug-Windows", "configurePreset": "arm64-Debug-Windows" },
-    { "name": "arm64-Release-Windows", "configurePreset": "arm64-Release-Windows" },
-    { "name": "arm64-RelNoDebInfo-Windows", "configurePreset": "arm64-RelNoDebInfo-Windows" }
+
+    { "name": "x64-Debug-VS2022", "configurePreset": "x64-Debug-VS2022" },
+    { "name": "arm64-Debug-VS2022", "configurePreset": "arm64-Debug-VS2022" },
+    { "name": "x32-Debug-VS2022", "configurePreset": "x32-Debug-VS2022" },
+    { "name": "x64-Release-VS2022", "configurePreset": "x64-Release-VS2022" },
+    { "name": "arm64-Release-VS2022", "configurePreset": "arm64-Release-VS2022" },
+    { "name": "x32-Release-VS2022", "configurePreset": "x32-Release-VS2022" },
+
+    { "name": "x64-Debug-VS2019", "configurePreset": "x64-Debug-VS2019" },
+    { "name": "arm64-Debug-VS2019", "configurePreset": "arm64-Debug-VS2019" },
+    { "name": "x32-Debug-VS2019", "configurePreset": "x32-Debug-VS2019" },
+    { "name": "x64-Release-VS2019", "configurePreset": "x64-Release-VS2019" },
+    { "name": "arm64-Release-VS2019", "configurePreset": "arm64-Release-VS2019" },
+    { "name": "x32-Release-VS2019", "configurePreset": "x32-Release-VS2019" },
+
+    { "name": "x64-Debug-ClangCL", "configurePreset": "x64-Debug-ClangCL" },
+    { "name": "arm64-Debug-ClangCL", "configurePreset": "arm64-Debug-ClangCL" },
+    { "name": "x32-Debug-ClangCL", "configurePreset": "x32-Debug-ClangCL" },
+    { "name": "x64-Release-ClangCL", "configurePreset": "x64-Release-ClangCL" },
+    { "name": "arm64-Release-ClangCL", "configurePreset": "arm64-Release-ClangCL" },
+    { "name": "x32-Release-ClangCL", "configurePreset": "x32-Release-ClangCL" }
   ],
   "configurePresets": [
     {
-      "name": "LinuxBase",
-      "generator": "Ninja",
+      "name": "Base", "hidden": true,
       "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}"
+    },
+    {
+      "name": "LinuxBaseGCC", "inherits": "Base", "hidden": true,
+      "generator": "Ninja",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Linux" ] }
       }
     },
     {
-      "name": "MacBase",
+      "name": "LinuxBaseClang", "inherits": "Base", "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Linux" ] }
+      }
+    },
+    {
+      "name": "MacBase", "inherits": "Base", "hidden": true,
+      "generator": "Ninja",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "macOS" },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "macOS" ] }
       }
     },
     {
-      "name": "WindowsBase",
+      "name": "WindowsBaseVS2022", "inherits": "Base", "hidden": true,
       "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/build/.cmake/${presetName}",
+      "condition": { "type": "inList", "string": "$env{VisualStudioVersion}", "list": [ "17.0", "" ] },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Windows" ] }
       }
     },
     {
-      "inherits": "LinuxBase",
-      "name": "x64-Debug-Linux",
-      "displayName": "x64-Debug-Linux",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CONFIGURATION_TYPES": "Debug"
+      "name": "WindowsBaseVS2019", "inherits": "Base", "hidden": true,
+      "generator": "Visual Studio 16 2019",
+      "condition": { "type": "equals", "lhs": "$env{VisualStudioVersion}", "rhs": "16.0" },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Windows" ] }
       }
     },
     {
-      "inherits": "LinuxBase",
-      "name": "linux-default",
-      "displayName": "x64-Release-Linux",
+      "name": "WindowsBaseClangCL", "inherits": "Base", "hidden": true,
+      "generator": "Ninja",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+        "CMAKE_C_COMPILER": "clang-cl",
+        "CMAKE_CXX_COMPILER": "clang-cl",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Windows" ] }
+      }
+    },
+
+    {
+      "name": "x64-Debug-GCC", "inherits": "LinuxBaseGCC",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "LinuxBase",
-      "name": "x64-RelNoDebInfo-Linux",
-      "displayName": "x64-RelNoDebInfo-Linux",
+      "name": "x64-Release-GCC", "inherits": "LinuxBaseGCC",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "x64-Debug-Clang", "inherits": "LinuxBaseClang",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "MacBase",
-      "name": "x64-Debug-Mac",
-      "displayName": "x64-Debug-Mac",
+      "name": "x64-Release-Clang", "inherits": "LinuxBaseClang",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CONFIGURATION_TYPES": "Debug"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "x64-Debug-Mac", "inherits": "MacBase",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "MacBase",
-      "name": "x64-Release-Mac",
-      "displayName": "x64-Release-Mac",
+      "name": "x64-Release-Mac", "inherits": "MacBase",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
       }
     },
+
     {
-      "inherits": "MacBase",
-      "name": "x64-RelNoDebInfo-Mac",
-      "displayName": "x64-RelNoDebInfo-Mac",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
-      }
-    },
-    {
-      "inherits": "WindowsBase",
-      "name": "x32-Debug-Windows",
-      "displayName": "x32-Debug-Windows",
-      "architecture": { "value": "Win32", "strategy": "set" },
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CONFIGURATION_TYPES": "Debug"
-      }
-    },
-    {
-      "inherits": "WindowsBase",
-      "name": "x32-Release-Windows",
-      "displayName": "x32-Release-Windows",
-      "architecture": { "value": "Win32", "strategy": "set" },
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
-      }
-    },
-    {
-      "inherits": "WindowsBase",
-      "name": "x32-RelNoDebInfo-Windows",
-      "displayName": "x32-RelNoDebInfo-Windows",
-      "architecture": { "value": "Win32", "strategy": "set" },
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
-      }
-    },
-    {
-      "inherits": "WindowsBase",
-      "name": "x64-Debug-Windows",
-      "displayName": "x64-Debug-Windows",
+      "name": "x64-Debug-VS2022", "inherits": "WindowsBaseVS2022",
       "architecture": { "value": "x64", "strategy": "set" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CONFIGURATION_TYPES": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "WindowsBase",
-      "name": "windows-default",
-      "displayName": "x64-Release-Windows",
+      "name": "arm64-Debug-VS2022", "inherits": "WindowsBaseVS2022",
+      "architecture": { "value": "ARM64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    },
+    {
+      "name": "x32-Debug-VS2022", "inherits": "WindowsBaseVS2022",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    },
+    {
+      "name": "x64-Release-VS2022", "inherits": "WindowsBaseVS2022",
       "architecture": { "value": "x64", "strategy": "set" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
       }
     },
     {
-      "inherits": "WindowsBase",
-      "name": "x64-RelNoDebInfo-Windows",
-      "displayName": "x64-RelNoDebInfo-Windows",
+      "name": "arm64-Release-VS2022", "inherits": "WindowsBaseVS2022",
+      "architecture": { "value": "ARM64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "x32-Release-VS2022", "inherits": "WindowsBaseVS2022",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "x64-Debug-VS2019", "inherits": "WindowsBaseVS2019",
       "architecture": { "value": "x64", "strategy": "set" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "WindowsBase",
-      "name": "arm64-Debug-Windows",
-      "displayName": "arm64-Debug-Windows",
+      "name": "arm64-Debug-VS2019", "inherits": "WindowsBaseVS2019",
       "architecture": { "value": "ARM64", "strategy": "set" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CONFIGURATION_TYPES": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "WindowsBase",
-      "name": "arm64-Release-Windows",
-      "displayName": "arm64-Release-Windows",
-      "architecture": { "value": "ARM64", "strategy": "set" },
+      "name": "x32-Debug-VS2019", "inherits": "WindowsBaseVS2019",
+      "architecture": { "value": "Win32", "strategy": "set" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
     },
     {
-      "inherits": "WindowsBase",
-      "name": "arm64-RelNoDebInfo-Windows",
-      "displayName": "arm64-RelNoDebInfo-Windows",
+      "name": "x64-Release-VS2019", "inherits": "WindowsBaseVS2019",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "arm64-Release-VS2019", "inherits": "WindowsBaseVS2019",
       "architecture": { "value": "ARM64", "strategy": "set" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CONFIGURATION_TYPES": "Release"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "x32-Release-VS2019", "inherits": "WindowsBaseVS2019",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "x64-Debug-ClangCL", "inherits": "WindowsBaseClangCL",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "toolset": { "value": "host=x64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ], "intelliSenseMode": "windows-clang-x64"
+        }
+      }
+    },
+    {
+      "name": "arm64-Debug-ClangCL", "inherits": "WindowsBaseClangCL",
+      "architecture": { "value": "arm64", "strategy": "external" },
+      "toolset": { "value": "host=arm64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ], "intelliSenseMode": "windows-clang-arm64"
+        }
+      }
+    },
+    {
+      "name": "x32-Debug-ClangCL", "inherits": "WindowsBaseClangCL",
+      "architecture": { "value": "x86", "strategy": "external" },
+      "toolset": { "value": "host=x86", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ], "intelliSenseMode": "windows-clang-x86"
+        }
+      }
+    },
+    {
+      "name": "x64-Release-ClangCL", "inherits": "WindowsBaseClangCL",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "toolset": { "value": "host=x64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ], "intelliSenseMode": "windows-clang-x64"
+        }
+      }
+    },
+    {
+      "name": "arm64-Release-ClangCL", "inherits": "WindowsBaseClangCL",
+      "architecture": { "value": "arm64", "strategy": "external" },
+      "toolset": { "value": "host=arm64", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ], "intelliSenseMode": "windows-clang-arm64"
+        }
+      }
+    },
+    {
+      "name": "x32-Release-ClangCL", "inherits": "WindowsBaseClangCL",
+      "architecture": { "value": "x86", "strategy": "external" },
+      "toolset": { "value": "host=x86", "strategy": "external" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [ "Windows" ], "intelliSenseMode": "windows-clang-x86"
+        }
       }
     }
   ]

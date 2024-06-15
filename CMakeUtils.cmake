@@ -124,6 +124,7 @@ function(init_project)
                 /sdl # Enable Additional Security Checks
                 "/MP ${maxCPU}" # Build with Multiple Processes
                 /permissive- # Standards conformance
+                /Zc:__cplusplus # Enable updated __cplusplus macro
             )
         else()
             message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
@@ -854,15 +855,21 @@ function(__write_msvs_launch_vs_json targets)
         string(REPLACE "\"" "\\\\\"" targetArgs "${targetArgs}")
         #message("targetName=${targetName} targetArgs=[${targetArgs}]")
 
-        add("x32-Debug-Windows/Debug"              "${Qt5x32Path}" "${targetName}" "${targetArgs}")
-        add("x32-Release-Windows/RelWithDebInfo"   "${Qt5x32Path}" "${targetName}" "${targetArgs}")
-        add("x32-RelNoDebInfo-Windows/Release"     "${Qt5x32Path}" "${targetName}" "${targetArgs}")
         add("x64-Debug-Windows/Debug"              "${Qt5x64Path}" "${targetName}" "${targetArgs}")
-        add("x64-Release-Windows/RelWithDebInfo"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
-        add("x64-RelNoDebInfo-Windows/Release"     "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("arm64-Debug-Windows/Debug"            "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x32-Debug-Windows/Debug"              "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+
+        add("x64-Release-Windows/RelWithDebInfo"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("arm64-Release-Windows/RelWithDebInfo" "${Qt5x64Path}" "${targetName}" "${targetArgs}")
-        add("arm64-RelNoDebInfo-Windows/Release"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x32-Release-Windows/RelWithDebInfo"   "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+
+        add("x64-Debug-Windows"                    "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-Debug-Windows"                  "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x32-Debug-Windows"                    "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+
+        add("x64-Release-Windows"                  "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-Release-Windows"                "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x32-Release-Windows"                  "${Qt5x32Path}" "${targetName}" "${targetArgs}")
     endforeach()
 
     set(json "${json}  ]\n")
@@ -906,7 +913,7 @@ function(copy_release_file_to_workdir frompath topath)
         return()
     endif()
 
-    if(MSVC)
+    if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
         set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${CMAKE_BUILD_TYPE}/${frompath}")
     else()
         set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${frompath}")

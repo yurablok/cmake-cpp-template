@@ -1,4 +1,4 @@
-﻿# CMake C++ Project Template
+# CMake C++ Project Template
 
 This template is designed for organizing cross-platform C++ projects, aimed at
 solving the main issues of maintaining a clean project structure and convenient
@@ -164,7 +164,7 @@ cmake \$@ \
  && chmod +x /usr/bin/crosscmake.sh
 ```
 
-3. Run crosscmake.sh on the root of your project:
+3. Run crosscmake.sh in `build/.cmake/{configuration}` on the root of your project:
 ```python
 from ntpath import join
 import os, sys
