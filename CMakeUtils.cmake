@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.9  2024-Sep-23     Added `recursive` parameter to `fetch_git`.
 # v0.8  2024-May-01     Added flags `-fvisibility=hidden`, `MSVC_CPU_AUTO_LIMIT`.
 # v0.7  2023-Dec-27     Added `breakpad_dump_and_strip`.
 # v0.6  2023-May-22     Added `--filter=tree:0` and removed `--single-branch` in `fetch_git`.
@@ -208,7 +209,7 @@ function(init_project)
     set(CMAKE_C_STANDARD_REQUIRED OFF PARENT_SCOPE)
     set(CMAKE_C_EXTENSIONS OFF PARENT_SCOPE)
     set(CMAKE_INCLUDE_CURRENT_DIR ON PARENT_SCOPE)
-    
+
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         set(Qt5Path "${Qt5x64Path}" PARENT_SCOPE)
     else()
@@ -409,10 +410,17 @@ endfunction(add_option)
 # @param directory  Target directory to download sources.
 # @param address    Git-compatible address of a repository.
 # @param tag        Desired branch | tag | hash.
-function(fetch_git directory address tag)
+# @param recursive  YES/NO to fetch recursively.
+function(fetch_git directory address tag recursive)
     get_filename_component(absolutePath ${directory} ABSOLUTE)
     file(RELATIVE_PATH relativePath ${CMAKE_SOURCE_DIR} ${absolutePath})
     message("fetch_git: checking \"${relativePath}\"...")
+
+    if(recursive)
+        set(recursive "--recurse-submodules")
+    else()
+        set(recursive "")
+    endif()
 
     if(NOT EXISTS "${absolutePath}/.git/HEAD")
         message("fetch_git: downloading \"${relativePath}\"...")
@@ -426,7 +434,7 @@ function(fetch_git directory address tag)
 
         execute_process(
             WORKING_DIRECTORY ${absoluteParentPath}
-            COMMAND git clone --branch ${tag} --filter=tree:0 --recurse-submodules ${address} ${folder}
+            COMMAND git clone --branch ${tag} --filter=tree:0 ${recursive} ${address} ${folder}
             OUTPUT_VARIABLE output
             ERROR_VARIABLE error
             RESULT_VARIABLE result
@@ -455,7 +463,7 @@ function(fetch_git directory address tag)
             if(${result} GREATER 0)
                 execute_process(
                     WORKING_DIRECTORY ${absoluteParentPath}
-                    COMMAND git clone --filter=tree:0 --recurse-submodules ${address} ${folder}
+                    COMMAND git clone --filter=tree:0 ${recursive} ${address} ${folder}
                     OUTPUT_VARIABLE output
                     ERROR_VARIABLE error
                     RESULT_VARIABLE result
@@ -466,7 +474,7 @@ function(fetch_git directory address tag)
 
                 execute_process(
                     WORKING_DIRECTORY ${absolutePath}
-                    COMMAND git checkout --recurse-submodules ${tag}
+                    COMMAND git checkout ${recursive} ${tag}
                     OUTPUT_VARIABLE output
                     ERROR_VARIABLE error
                     RESULT_VARIABLE result
@@ -490,7 +498,7 @@ function(fetch_git directory address tag)
     else()
         execute_process(
             WORKING_DIRECTORY ${absolutePath}
-            COMMAND git checkout --recurse-submodules ${tag}
+            COMMAND git checkout ${recursive} ${tag}
             OUTPUT_VARIABLE output
             ERROR_VARIABLE error
             RESULT_VARIABLE result
@@ -505,7 +513,7 @@ function(fetch_git directory address tag)
 
             execute_process(
                 WORKING_DIRECTORY ${absolutePath}
-                COMMAND git fetch --all --tags --recurse-submodules
+                COMMAND git fetch --all --tags ${recursive}
                 OUTPUT_VARIABLE output
                 ERROR_VARIABLE error
                 RESULT_VARIABLE result
@@ -516,7 +524,7 @@ function(fetch_git directory address tag)
 
             execute_process(
                 WORKING_DIRECTORY ${absolutePath}
-                COMMAND git checkout --recurse-submodules --force ${tag}
+                COMMAND git checkout ${recursive} --force ${tag}
                 OUTPUT_VARIABLE output
                 ERROR_VARIABLE error
                 RESULT_VARIABLE result
@@ -728,11 +736,11 @@ function(__find_msvc_qt5 drives qtVersion)
 endfunction(__find_msvc_qt5)
 
 
-#  ██████  ██████  ███████  █████  ██   ██ ██████   █████  ██████      ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
-#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██   ██ ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██      ██      
-#  ██████  ██████  █████   ███████ █████   ██████  ███████ ██   ██     ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
-#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██      ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██           ██ 
-#  ██████  ██   ██ ███████ ██   ██ ██   ██ ██      ██   ██ ██████       ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+#  ██████  ██████  ███████  █████  ██   ██ ██████   █████  ██████      ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
+#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██   ██ ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██      ██
+#  ██████  ██████  █████   ███████ █████   ██████  ███████ ██   ██     ██    ██    ██    ██ ██      ██    ██    █████   ███████
+#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██      ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██           ██
+#  ██████  ██   ██ ███████ ██   ██ ██   ██ ██      ██   ██ ██████       ██████     ██    ██ ███████ ██    ██    ███████ ███████
 
 # @param targetName             Target name for which the symbols will be dumped
 # @param BREAKPAD_DUMP_SYMS     Path to the Breakpad's dump_syms executable.
@@ -764,11 +772,11 @@ function(breakpad_dump_and_strip targetName)
         WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
         COMMAND ${CMAKE_COMMAND}
             -DRUN=breakpad_dump_and_strip
-    
+
             -DBREAKPAD_DUMP_SYMS=${BREAKPAD_DUMP_SYMS}
             -DCMAKE_STRIP=${CMAKE_STRIP}
             -DTARGET_FILE=${targetName}
-    
+
             -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
     )
 endfunction(breakpad_dump_and_strip)
