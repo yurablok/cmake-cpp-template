@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(application VERSION 0.0.1 LANGUAGES CXX C)
+project(application LANGUAGES CXX C)
 
 # Qt
 if(Qt5_DIR)
@@ -10,7 +10,6 @@ if(Qt5_DIR)
 endif()
 
 add_executable(${PROJECT_NAME})
-copy_release_app_to_workdir("${PROJECT_NAME}")
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE
@@ -33,7 +32,7 @@ if(Qt5_DIR)
     target_compile_definitions(${PROJECT_NAME} PRIVATE QT_USE_QSTRINGBUILDER)
     target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt5::Core Qt5::Network)
-    #qt5_add_resources(PROJECT_RESOURCES "resources.qrc")
+    #qt5_add_resources(QT_RESOURCES "resources.qrc")
     qt5_create_ts_and_qm(
         SOURCES "."
         TS_FILES "resources/ts_chi.ts" # For example, ISO 639-2/B
@@ -57,7 +56,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/hea
 
 # shared
 target_link_libraries(${PROJECT_NAME} PRIVATE shared)
-copy_release_lib_to_workdir("shared")
 
 
 # static
@@ -73,14 +71,27 @@ endif()
 
 #if(WIN32)
 #    set(WIN32_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/resources/resources.rc")
-#else()
-#    set(WIN32_RESOURCES "")
 #endif()
 
-#target_precompile_headers(${PROJECT_NAME} PRIVATE "pch.h")
+target_precompile_headers(${PROJECT_NAME} PRIVATE
+    "$<$<COMPILE_LANGUAGE:C>:pch.h>"
+    "$<$<COMPILE_LANGUAGE:CXX>:pch.hpp>"
+)
 target_sources(${PROJECT_NAME} PRIVATE
     "main.cpp"
+    "pch.h"
+    "pch.hpp"
 
-    #"${PROJECT_RESOURCES}"
+    #"${QT_RESOURCES}"
     #"${WIN32_RESOURCES}"
 )
+
+add_metainfo(${PROJECT_NAME}
+    VERSION 1.2.3.4-alpha5
+    DESCRIPTION "Application Template"
+    PRODUCT "CMake C++ Template"
+    COMPANY "HOME Co."
+    COPYRIGHT "© 2007-2024 HOME Co. All rights reserved."
+    ICON "icon"
+)
+copy_release_binary_to_workdir(${PROJECT_NAME})

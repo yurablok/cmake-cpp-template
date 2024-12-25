@@ -2,15 +2,18 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
-# v0.9  2024-Sep-23     Added `recursive` parameter to `fetch_git`.
-# v0.8  2024-May-01     Added flags `-fvisibility=hidden`, `MSVC_CPU_AUTO_LIMIT`.
-# v0.7  2023-Dec-27     Added `breakpad_dump_and_strip`.
-# v0.6  2023-May-22     Added `--filter=tree:0` and removed `--single-branch` in `fetch_git`.
-# v0.5  2023-Feb-22     Added `fetch_git`.
-# v0.4  2023-Feb-20     Added git commands.
-# v0.3  2023-Jan-24     Added `add_option`.
-# v0.2  2022-Dec-24     Added support for Windows ARM64.
-# v0.1  2022-Oct-18     First release.
+# v0.10  2024-Dec-27    Added `add_metainfo`.
+#                       Added `copy_release_binary_to_workdir` instead of
+#                         `copy_release_app_to_workdir` & `copy_release_lib_to_workdir`.
+# v0.9   2024-Sep-23    Added `recursive` parameter to `fetch_git`.
+# v0.8   2024-May-01    Added flags `-fvisibility=hidden`, `MSVC_CPU_AUTO_LIMIT`.
+# v0.7   2023-Dec-27    Added `breakpad_dump_and_strip`.
+# v0.6   2023-May-22    Added `--filter=tree:0` and removed `--single-branch` in `fetch_git`.
+# v0.5   2023-Feb-22    Added `fetch_git`.
+# v0.4   2023-Feb-20    Added git commands.
+# v0.3   2023-Jan-24    Added `add_option`.
+# v0.2   2022-Dec-24    Added support for Windows ARM64.
+# v0.1   2022-Oct-18    First release.
 
 # Include this file before the main `project(...)`
 
@@ -399,6 +402,257 @@ function(add_option)
     endif()
 
 endfunction(add_option)
+
+
+#  █████  ██████  ██████      ███    ███ ███████ ████████  █████  ██ ███    ██ ███████  ██████
+# ██   ██ ██   ██ ██   ██     ████  ████ ██         ██    ██   ██ ██ ████   ██ ██      ██    ██
+# ███████ ██   ██ ██   ██     ██ ████ ██ █████      ██    ███████ ██ ██ ██  ██ █████   ██    ██
+# ██   ██ ██   ██ ██   ██     ██  ██  ██ ██         ██    ██   ██ ██ ██  ██ ██ ██      ██    ██
+# ██   ██ ██████  ██████      ██      ██ ███████    ██    ██   ██ ██ ██   ████ ██       ██████
+#
+# @param targetName               EXECUTABLE or SHARED_LIBRARY target
+# @param VERSION                  1.2.3.4-alpha5
+# @param DESCRIPTION  (optional)  "Application Template"
+# @param PRODUCT      (optional)  "CMake C++ Template"
+# @param COMPANY      (optional)  "HOME Co."
+# @param COPYRIGHT    (optional)  "© 2007-2024 HOME Co. All rights reserved."
+# @param ICON         (optional)  "icon" (without the extension) -> Windows: .ico, MacOS: .icns
+function(add_metainfo targetName)
+    get_target_property(targetType ${targetName} TYPE)
+    get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
+    if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
+        set(targetOutputName ${targetName})
+    endif()
+
+    cmake_parse_arguments(arg "" "VERSION;DESCRIPTION;COMPANY;PRODUCT;COPYRIGHT;ICON" "" "${ARGN}")
+
+    string(REGEX MATCH "([0-9]+)\\.?([0-9]+)?\\.?([0-9]+)?\\.?([0-9]+)?-?([-0-9a-zA-Z]+)?" result ${arg_VERSION})
+    if("${CMAKE_MATCH_1}" STREQUAL "")
+        set(CMAKE_MATCH_1 "0")
+    endif()
+    if("${CMAKE_MATCH_2}" STREQUAL "")
+        set(CMAKE_MATCH_2 "0")
+    endif()
+    if("${CMAKE_MATCH_3}" STREQUAL "")
+        set(CMAKE_MATCH_3 "0")
+    endif()
+    if("${CMAKE_MATCH_4}" STREQUAL "")
+        set(CMAKE_MATCH_4 "0")
+    endif()
+
+    if("${targetType}" STREQUAL "EXECUTABLE")
+        set(targetOutputName "${targetOutputName}${CMAKE_EXECUTABLE_SUFFIX}")
+    elseif("${targetType}" STREQUAL "SHARED_LIBRARY")
+        if(NOT "${arg_ICON}" STREQUAL "")
+            message(FATAL_ERROR "add_metainfo: ${targetName} is a library and can't has an icon")
+        endif()
+        set(targetOutputName "${targetOutputName}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    else()
+        message(FATAL_ERROR "add_metainfo: ${targetName} must be EXECUTABLE or SHARED_LIBRARY")
+    endif()
+
+    get_target_property(targetSources ${targetName} SOURCES)
+    if("${targetSources}" STREQUAL "")
+        message(FATAL_ERROR "add_metainfo: use it after specifying sources for ${targetName}")
+    endif()
+
+    set(cPath "${CMAKE_CURRENT_BINARY_DIR}/${targetName}.metainfo.c")
+    set(c
+"#include \"${targetName}.metainfo.h\"
+
+#if defined(__unix__)
+  __attribute__((used, section(\".sccsid\")))
+#else
+# if defined(__cplusplus)
+    extern \"C\"
+# else
+    extern
+# endif
+#endif
+// Source Code Control System (SCCS) convention
+// grep --binary-files=text \"@(#)\" application
+// readelf -p .sccsid {application}
+const char sccsid[] = \"\\n\\n\"
+    \"@(#) Version: v${arg_VERSION}\\n\"
+    \"@(#) Description: ${arg_DESCRIPTION}\\n\"
+    \"@(#) Product Name: ${arg_PRODUCT}\\n\"
+    \"@(#) Company Name: ${arg_COMPANY}\\n\"
+    \"@(#) Copyright: ${arg_COPYRIGHT}\\n\"
+    \"\\n\"
+    \"$Id: v${arg_VERSION} | ${arg_DESCRIPTION} | ${arg_PRODUCT}\"
+    \" | ${arg_COMPANY} | ${arg_COPYRIGHT} $\\n\"
+\"\\n\";
+
+#if defined(__unix__)
+// readelf -p .note.version {application}
+// readelf -p .note.version -p .note.description -p .note.product -p .note.company -p .note.copyright application
+// readelf -n {application}
+#   define ADD_NOTE(TOKEN, NAME, TEXT) \\
+        struct note_##TOKEN { \\
+            uint32_t namesz; \\
+            uint32_t descsz; \\
+            uint32_t type; \\
+            char name[sizeof(NAME)]; \\
+            char desc[sizeof(TEXT)]; \\
+        }; \\
+        __attribute__((used, section(\".note.\" #TOKEN), aligned(4))) \\
+        const struct note_##TOKEN g_##TOKEN = { \\
+            .namesz = sizeof(NAME), \\
+            .descsz = sizeof(TEXT), \\
+            .type = 1, \\
+            .name = NAME, \\
+            .desc = TEXT \\
+        }
+    ADD_NOTE(version,     \"${arg_VERSION}\", \"${arg_VERSION}\");
+    ADD_NOTE(description, \"description\",    \"${arg_DESCRIPTION}\");
+    ADD_NOTE(product,     \"product\",        \"${arg_PRODUCT}\");
+    ADD_NOTE(company,     \"company\",        \"${arg_COMPANY}\");
+    ADD_NOTE(copyright,   \"copyright\",      \"${arg_COPYRIGHT}\");
+#endif
+
+const char* ${targetName}_Version() {
+    return \"${arg_VERSION}\";
+}
+uint16_t ${targetName}_VersionMajor() {
+    return ${CMAKE_MATCH_1};
+}
+uint16_t ${targetName}_VersionMinor() {
+    return ${CMAKE_MATCH_2};
+}
+uint16_t ${targetName}_VersionPatch() {
+    return ${CMAKE_MATCH_3};
+}
+uint16_t ${targetName}_VersionBuild() {
+    return ${CMAKE_MATCH_4};
+}
+const char* ${targetName}_VersionQualifier() {
+    return \"${CMAKE_MATCH_5}\";
+}
+")
+    set(hPath "${CMAKE_CURRENT_BINARY_DIR}/${targetName}.metainfo.h")
+    set(h
+"#pragma once
+#include <stdint.h>
+
+#if defined(__cplusplus)
+extern \"C\" {
+#endif
+
+const char* ${targetName}_Version();
+uint16_t ${targetName}_VersionMajor();
+uint16_t ${targetName}_VersionMinor();
+uint16_t ${targetName}_VersionPatch();
+uint16_t ${targetName}_VersionBuild();
+const char* ${targetName}_VersionQualifier();
+")
+
+    if(${CMAKE_MATCH_1} LESS_EQUAL 0xFF AND ${CMAKE_MATCH_2} LESS_EQUAL 0xFF
+            AND ${CMAKE_MATCH_3} LESS_EQUAL 0xFF AND ${CMAKE_MATCH_4} LESS_EQUAL 0xFF)
+        set(h
+"${h}uint32_t ${targetName}_VersionU32();
+")
+        set(c
+"${c}uint32_t ${targetName}_VersionU32() {
+    return (UINT32_C(${CMAKE_MATCH_1}) << 24) | (UINT32_C(${CMAKE_MATCH_2}) << 16) | (UINT32_C(${CMAKE_MATCH_3}) << 8) | (UINT32_C(${CMAKE_MATCH_4}));
+}
+")
+    endif()
+    if(${CMAKE_MATCH_1} LESS_EQUAL 0xFFFF AND ${CMAKE_MATCH_2} LESS_EQUAL 0xFFFF
+            AND ${CMAKE_MATCH_3} LESS_EQUAL 0xFFFF AND ${CMAKE_MATCH_4} LESS_EQUAL 0xFFFF)
+        set(h
+"${h}uint64_t ${targetName}_VersionU64();
+")
+        set(c
+"${c}uint64_t ${targetName}_VersionU64() {
+    return (UINT64_C(${CMAKE_MATCH_1}) << 48) | (UINT64_C(${CMAKE_MATCH_2}) << 32) | (UINT64_C(${CMAKE_MATCH_3}) << 16) | (UINT64_C(${CMAKE_MATCH_4}));
+}
+")
+    endif()
+    set(h "${h}
+#if defined(__cplusplus)
+} // extern \"C\"
+#endif
+")
+
+    string(SHA256 verHash "${c}|${arg_ICON}")
+    if("${${targetName}_verHashCached}" STREQUAL ${verHash})
+        set(isChanged NO)
+    else()
+        set(${targetName}_verHashCached ${verHash} CACHE INTERNAL "")
+        set(isChanged YES)
+    endif()
+
+    if(isChanged)
+        file(WRITE "${hPath}" "${h}")
+        file(WRITE "${cPath}" "${c}")
+        message("Generated ${targetName}.metainfo.h & c")
+    endif()
+
+    target_include_directories(${targetName} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+    list(APPEND targetSources "${hPath}" "${cPath}")
+
+    if(WIN32)
+        if(NOT "${arg_ICON}" STREQUAL "")
+            set(icon "\nIDI_ICON1 ICON DISCARDABLE \"${arg_ICON}.ico\"\n")
+        endif()
+        set(rcPath "${CMAKE_CURRENT_BINARY_DIR}/${targetName}.metainfo.rc")
+        set(rc
+"#include <windows.h>
+${icon}
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION ${CMAKE_MATCH_1},${CMAKE_MATCH_2},${CMAKE_MATCH_3},${CMAKE_MATCH_4}
+    FILEFLAGSMASK 0xFFL
+# ifdef NDEBUG
+    FILEFLAGS 0
+# else
+    FILEFLAGS VS_FF_DEBUG
+# endif
+BEGIN
+    BLOCK \"StringFileInfo\"
+    BEGIN
+        BLOCK \"000004B0\"
+        BEGIN
+            VALUE \"FileDescription\", \"${arg_DESCRIPTION}\\0\"
+            VALUE \"ProductName\", \"${arg_PRODUCT}\\0\"
+            VALUE \"ProductVersion\", \"${arg_VERSION}\\0\"
+            VALUE \"CompanyName\", \"${arg_COMPANY}\\0\"
+            VALUE \"LegalCopyright\", \"${arg_COPYRIGHT}\\0\"
+            VALUE \"OriginalFilename\", \"${targetOutputName}\\0\"
+        END
+    END
+    BLOCK \"VarFileInfo\"
+    BEGIN
+        VALUE \"Translation\", 0x0000, 0x04B0
+    END
+END
+")
+        if(isChanged)
+            # ClangCL: UTF-16 (LE) byte order mark detected in '***.rc', but encoding is not supported
+            if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+                file(WRITE "${rcPath}" "${rc}")
+                message(WARNING "ClanCL supports only ASCII .rc")
+            else()
+                file(WRITE "${rcPath}.utf8" "${rc}")
+                execute_process(
+                    COMMAND powershell
+                        Get-Content '${targetName}.metainfo.rc.utf8' -Raw -Encoding utf8
+                        | Out-File '${targetName}.metainfo.rc' -Encoding unicode
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                )
+            endif()
+            message("Generated ${targetName}.metainfo.rc")
+        endif()
+        list(APPEND targetSources "${rcPath}")
+    elseif(APPLE)
+        #TODO: Generate Info.plist
+        if(NOT "${arg_ICON}" STREQUAL "")
+            set(iconPath "${arg_ICON}.icns")
+            set_source_files_properties(${iconPath} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+            list(APPEND targetSources "${iconPath}")
+        endif()
+    endif()
+    target_sources(${targetName} PRIVATE "${targetSources}")
+endfunction(add_metainfo)
 
 
 #   ██████  ██ ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
@@ -916,39 +1170,52 @@ function(__crutch_for_msvs_bug_with_merges)
 endfunction(__crutch_for_msvs_bug_with_merges)
 
 
-function(copy_release_file_to_workdir frompath topath)
+# @param targetName
+# @param toPath  (optional)  "workdir/bin_***/{to/Path}.ext"
+function(copy_release_binary_to_workdir targetName)
+    get_target_property(targetType ${targetName} TYPE)
+    get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
+    if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
+        set(targetOutputName ${targetName})
+    endif()
+
+    set(argIdx -1)
+    set(toPath "${targetOutputName}")
+    foreach(arg ${ARGN})
+        math(EXPR argIdx "${argIdx}+1")
+        if(${argIdx} EQUAL 0)
+            set(toPath "${arg}")
+        else()
+            message(FATAL_ERROR "copy_release_binary_to_workdir: wrong aguments number for \"${targetName}\"")
+        endif()
+    endforeach()
+
+    if("${targetType}" STREQUAL "EXECUTABLE")
+        set(targetOutputName "${targetOutputName}${CMAKE_EXECUTABLE_SUFFIX}")
+        set(toPath "${toPath}${CMAKE_EXECUTABLE_SUFFIX}")
+    elseif("${targetType}" STREQUAL "SHARED_LIBRARY")
+        set(targetOutputName "${targetOutputName}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        set(toPath "${toPath}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    else()
+        message(FATAL_ERROR "copy_release_binary_to_workdir: \"${targetName}\" must be EXECUTABLE or SHARED_LIBRARY")
+    endif()
+
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         return()
     endif()
 
     if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${CMAKE_BUILD_TYPE}/${frompath}")
+        set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${CMAKE_BUILD_TYPE}/${targetOutputName}")
     else()
-        set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${frompath}")
+        set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${targetOutputName}")
     endif()
-    set(fullto "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${topath}")
+    set(fullto "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${toPath}")
 
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${fullfrom}" "${fullto}"
     )
-endfunction(copy_release_file_to_workdir)
-
-macro(copy_release_app_to_workdir basename)
-    if(WIN32)
-        copy_release_file_to_workdir("${basename}.exe" "${basename}.exe")
-    else()
-        copy_release_file_to_workdir("${basename}" "${basename}")
-    endif()
-endmacro(copy_release_app_to_workdir)
-
-macro(copy_release_lib_to_workdir basename)
-    if(WIN32)
-        copy_release_file_to_workdir("${basename}.dll" "${basename}.dll")
-    else()
-        copy_release_file_to_workdir("lib${basename}.so" "${basename}.so")
-    endif()
-endmacro(copy_release_lib_to_workdir)
+endfunction(copy_release_binary_to_workdir)
 
 
 if("${RUN}" STREQUAL "")

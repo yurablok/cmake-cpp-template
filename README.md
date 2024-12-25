@@ -16,14 +16,142 @@ work using VSCode and MS VisualStudio.
   - `build/.cmake/arch_type_platform/`
 - A single shared working directory to minimize duplication of runtime resources.
   - `workdir/`
-- `add_option` as better variant of `set(...CACHE...)` that has the next features:
+- `add_metainfo` that allows adding icon, version, and other information to binary files
+  in different ways at the same time:
+  - Universal: generated source code `{application}.metainfo.h & c`:
+    <details>
+      <summary>Example</summary>
+
+      ```cmake
+      add_metainfo(${PROJECT_NAME}
+          VERSION 1.2.3.4-alpha5
+          DESCRIPTION "Application Template"
+          PRODUCT "CMake C++ Template"
+          COMPANY "HOME Co."
+          COPYRIGHT "© 2007-2024 HOME Co. All rights reserved."
+          ICON "icon"
+      )
+      ```
+      ```c
+      const char* application_Version(); // "1.2.3.4-alpha5"
+      uint16_t application_VersionMajor(); // 1
+      uint16_t application_VersionMinor(); // 2
+      uint16_t application_VersionPatch(); // 3
+      uint16_t application_VersionBuild(); // 4
+      const char* application_VersionQualifier(); // "alpha5"
+      uint32_t application_VersionU32(); // if it fits into 4 bytes
+      uint64_t application_VersionU64(); // if it fits into 8 bytes
+      ```
+      ```cmake
+      add_metainfo(${PROJECT_NAME}
+          VERSION 3333-pre-release
+      )
+      ```
+      ```c
+      const char* application_Version(); // "3333-pre-release"
+      uint16_t application_VersionMajor(); // 3333
+      uint16_t application_VersionMinor(); // 0
+      uint16_t application_VersionPatch(); // 0
+      uint16_t application_VersionBuild(); // 0
+      const char* application_VersionQualifier(); // "pre-release"
+      uint64_t application_VersionU64(); // 0x0D05'0000'0000'0000
+      ```
+    </details>
+  - Universal: embedded strings in non-strict according to
+    [SCCS](https://en.wikipedia.org/wiki/Source_Code_Control_System).
+  - Platform-specific: Windows-resource `.rc`, ELF-sections,
+    MacOS-resource TODO:`Info.plist`.
+    <details>
+      <summary>Examples of working with SCCS and ELF-sections</summary>
+    
+      ```shell
+      $ grep --binary-files=text "@(#)" application
+      @(#) Version: v1.2.3.4-alpha5
+      @(#) Description: Application Template
+      @(#) Product Name: CMake C++ Template
+      @(#) Company Name: HOME Co.
+      @(#) Copyright: © 2007-2024 HOME Co. All rights reserved.
+      ```
+      ```shell
+      $ grep --binary-files=text "\$Id:" application
+      $Id: v1.2.3.4-alpha5 | Application Template | CMake C++ Template | HOME Co. | © 2007-2024 HOME Co. All rights reserved. $
+      ```
+      ```shell
+      $ readelf -p .note.version -p .note.description -p .note.product -p .note.company -p .note.copyright application
+
+      String dump of section '.note.company':
+        [     c]  company
+        [    14]  HOME Co.
+
+
+      String dump of section '.note.copyright':
+        [     4]  +
+        [     c]  copyright
+        [    18]   2007-2024 HOME Co. All rights reserved.
+
+
+      String dump of section '.note.description':
+        [     c]  description
+        [    18]  Application Template
+
+
+      String dump of section '.note.product':
+        [     c]  product
+        [    14]  CMake C++ Template
+
+
+      String dump of section '.note.version':
+        [     c]  version
+        [    14]  1.2.3.4-alpha5
+      ```
+      ```shell
+      $ readelf -n application
+
+      Displaying notes found in: .note.company
+        Owner                Data size        Description
+        company              0x00000009       NT_VERSION (version)
+         description data: 48 4f 4d 45 20 43 6f 2e 00
+
+      Displaying notes found in: .note.copyright
+        Owner                Data size        Description
+        copyright            0x0000002b       NT_VERSION (version)
+         description data: 20 32 30 30 37 2d 32 30 32 34 20 48 4f 4d 45 20 43 6f 2e 20 41 6c 6c 20 72 69 67 68 74 73 20 72 65 73 65 72 76 65 64 2e 00 00 00
+
+      Displaying notes found in: .note.description
+        Owner                Data size        Description
+        description          0x00000015       NT_VERSION (version)
+         description data: 41 70 70 6c 69 63 61 74 69 6f 6e 20 54 65 6d 70 6c 61 74 65 00
+
+      Displaying notes found in: .note.product
+        Owner                Data size        Description
+        product              0x00000013       NT_VERSION (version)
+         description data: 43 4d 61 6b 65 20 43 2b 2b 20 54 65 6d 70 6c 61 74 65 00
+
+      Displaying notes found in: .note.version
+        Owner                Data size        Description
+        1.2.3.4-alpha5       0x0000000f       NT_VERSION (version)
+         description data: 2e 32 2e 33 2e 34 2d 61 6c 70 68 61 35 00 00
+      ```
+      ```shell
+      $ readelf -p .sccsid application
+
+      String dump of section '.sccsid':
+        [     2]  @(#) Version: v1.2.3.4-alpha5\n
+                  @(#) Description: Application Template\n
+                  @(#) Product Name: CMake C++ Template\n
+                  @(#) Company Name: HOME Co.\n
+                  @(#) Copyright: � 2007-2024 HOME Co. All rights reserved.\n
+                  $Id: v1.2.3.4-alpha5 | Application Template | CMake C++ Template | HOME Co. | � 2007-2024 HOME Co. All rights reserved. $\n
+      ```
+    </details>
+- `add_option` as a better variant of `set(...CACHE...)` that has the next features:
   - More simple and intuitive interface.
   - 5 data types with some strict rules.
   - All the options have `OPTION_` prefix that simplifies working with CMakeCache
     when you have only a text editor.
   - All the options are automatically defined as macros for desired targets.
 - Git utilities.
-  - `fetch_git` as better variant of `FetchContent_...` that is useful for additional
+  - `fetch_git` as a better variant of `FetchContent_...` that is useful for additional
     projects such as examples or tests (for main projects use classic git submodules
     or package managers) and has the next features:
     - More simple and intuitive interface.

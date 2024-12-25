@@ -1,17 +1,16 @@
-#include <fstream>
-
-#ifdef QT_VERSION
-#   include <QCoreApplication>
-#endif
+#include "pch.hpp"
+#include "application.metainfo.h"
 
 #include "headeronly.hpp"
 #include "shared.hpp"
 #include "static.hpp"
 
+
 int32_t main(int32_t argc, char* argv[]) {
 # ifdef QT_VERSION
     QCoreApplication app(argc, argv);
 # endif
+    std::cout << "Application: v" << application_Version() << std::endl;
 
     headeronly();
     shared();
