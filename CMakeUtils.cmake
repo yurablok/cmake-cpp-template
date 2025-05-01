@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.11  2025-Apr-21    Added ' ' prefix into target names in `launch.vs.json`.
 # v0.10  2024-Dec-27    Added `add_metainfo`.
 #                       Added `copy_release_binary_to_workdir` instead of
 #                         `copy_release_app_to_workdir` & `copy_release_lib_to_workdir`.
@@ -86,6 +87,7 @@ function(init_project)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}" PARENT_SCOPE)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}" PARENT_SCOPE)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}" PARENT_SCOPE)
+    set(CMAKE_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/workdir" PARENT_SCOPE)
 
     file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/build/.cmake")
     file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/workdir")
@@ -1095,7 +1097,7 @@ function(__write_msvs_launch_vs_json targets)
         set(json "${json}      \"type\": \"default\",\n")
         set(json "${json}      \"project\": \"CMakeLists.txt\",\n")
         set(json "${json}      \"projectTarget\": \"${targetName}.exe (${targetPath}.exe)\",\n")
-        set(json "${json}      \"name\": \"${targetName}\",\n")
+        set(json "${json}      \"name\": \" ${targetName}\",\n") # ' ' for placing targets at the top
         set(json "${json}      \"args\": [\n")
         set(json "${json}        \"${targetArgs}\"\n")
         set(json "${json}      ],\n")
