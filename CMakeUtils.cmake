@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.12  2025-May-23    Added `CMAKE_CXX_STANDARD_AVAILABLE`.
 # v0.11  2025-Apr-21    Added ' ' prefix into target names in `launch.vs.json`.
 # v0.10  2024-Dec-27    Added `add_metainfo`.
 #                       Added `copy_release_binary_to_workdir` instead of
@@ -105,6 +106,7 @@ function(init_project)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
 
+    include(CheckCXXCompilerFlag)
     if(MSVC)
         if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
             message("Compiler: MSVC v${CMAKE_CXX_COMPILER_VERSION}")
@@ -154,6 +156,14 @@ function(init_project)
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MD /Zi /O2 /Ob2 /DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MD /Zi /O2 /Ob2 /DNDEBUG" PARENT_SCOPE)
 
+        foreach(v 26 23 20 17 14 11)
+            check_cxx_compiler_flag("/std:c++${v}" IS_CXX${v}_SUPPORTED)
+            if(IS_CXX${v}_SUPPORTED)
+                set(CMAKE_CXX_STANDARD_AVAILABLE ${v} PARENT_SCOPE)
+                break()
+            endif()
+        endforeach()
+
         #NOTE: When changing the Qt5_DIR, you may need to manually delete CMakeCache.txt
         __find_msvc_qt5("C;D;E" "5.15.2")
         __write_msvs_launch_vs_json("${arg_UNPARSED_ARGUMENTS}")
@@ -189,6 +199,14 @@ function(init_project)
             message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fcolor-diagnostics)
         endif()
+
+        foreach(v 26 23 20 17 14 11)
+            check_cxx_compiler_flag("-std=c++${v}" IS_CXX${v}_SUPPORTED)
+            if(IS_CXX${v}_SUPPORTED)
+                set(CMAKE_CXX_STANDARD_AVAILABLE ${v} PARENT_SCOPE)
+                break()
+            endif()
+        endforeach()
 
         __find_gcc_qt5("5.15.2")
 
