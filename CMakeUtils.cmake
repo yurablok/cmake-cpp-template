@@ -2,6 +2,8 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.13  2025-Jul-07    Changed `breakpad_dump_and_strip` to `dump_syms_and_strip`.
+#                       Changed `copy_release_binary_to_workdir` to `copy_release_binary`.
 # v0.12  2025-May-23    Added `CMAKE_CXX_STANDARD_AVAILABLE`.
 # v0.11  2025-Apr-21    Added ' ' prefix into target names in `launch.vs.json`.
 # v0.10  2024-Dec-27    Added `add_metainfo`.
@@ -110,6 +112,7 @@ function(init_project)
     if(MSVC)
         if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
             message("Compiler: MSVC v${CMAKE_CXX_COMPILER_VERSION}")
+            set(BUILD_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${CMAKE_BUILD_TYPE}")
             if(MSVC_CPU_AUTO_LIMIT)
                 cmake_host_system_information(RESULT totalCPU QUERY NUMBER_OF_LOGICAL_CORES)
                 message("NUMBER_OF_LOGICAL_CORES=${totalCPU}")
@@ -136,6 +139,7 @@ function(init_project)
             )
         else()
             message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
+            set(BUILD_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}")
             add_compile_options(-fcolor-diagnostics)
         endif()
 
@@ -182,6 +186,7 @@ function(init_project)
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g1 -DNDEBUG" PARENT_SCOPE)
 
+        set(BUILD_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}")
         add_compile_options(-fvisibility=hidden)
 
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -246,6 +251,7 @@ function(init_project)
     set(BUILD_TYPE "${BUILD_TYPE}" PARENT_SCOPE)
     set(BUILD_PLATFORM "${BUILD_PLATFORM}" PARENT_SCOPE)
     set(BUILD_FOLDER "${BUILD_FOLDER}" PARENT_SCOPE)
+    set(BUILD_DIRECTORY "${BUILD_DIRECTORY}" PARENT_SCOPE)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${CMAKE_INTERPROCEDURAL_OPTIMIZATION} PARENT_SCOPE)
 endfunction(init_project)
 
@@ -1010,50 +1016,120 @@ function(__find_msvc_qt5 drives qtVersion)
 endfunction(__find_msvc_qt5)
 
 
-#  ██████  ██████  ███████  █████  ██   ██ ██████   █████  ██████      ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
-#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██   ██ ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██      ██
-#  ██████  ██████  █████   ███████ █████   ██████  ███████ ██   ██     ██    ██    ██    ██ ██      ██    ██    █████   ███████
-#  ██   ██ ██   ██ ██      ██   ██ ██  ██  ██      ██   ██ ██   ██     ██    ██    ██    ██ ██      ██    ██    ██           ██
-#  ██████  ██   ██ ███████ ██   ██ ██   ██ ██      ██   ██ ██████       ██████     ██    ██ ███████ ██    ██    ███████ ███████
+#  ██████   █████   ██████ ██   ██ ████████ ██████   █████   ██████ ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
+#  ██   ██ ██   ██ ██      ██  ██     ██    ██   ██ ██   ██ ██      ██          ██    ██    ██    ██ ██      ██    ██    ██      ██      
+#  ██████  ███████ ██      █████      ██    ██████  ███████ ██      █████       ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
+#  ██   ██ ██   ██ ██      ██  ██     ██    ██   ██ ██   ██ ██      ██          ██    ██    ██    ██ ██      ██    ██    ██           ██ 
+#  ██████  ██   ██  ██████ ██   ██    ██    ██   ██ ██   ██  ██████ ███████      ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
 
-# @param targetName             Target name for which the symbols will be dumped
-# @param BREAKPAD_DUMP_SYMS     Path to the Breakpad's dump_syms executable.
-# @param CMAKE_STRIP (optional) Path to the strip executable if the target platform is different.
-function(breakpad_dump_and_strip targetName)
+# @param targetName                     Target name for which the symbols will be dumped.
+# @param toPath             (optional)  "workdir/{to/Path}.sym|pdb.zip"
+#        -/-                "WORKDIR":  "workdir/bin_{arch}/{targetOutputName}.sym|pdb.zip"
+#        -/-                  default:  "build/{type}/{targetOutputName}.sym|pdb.zip"
+# @global BREAKPAD_DUMP_SYMS     (ELF)  Path to the Breakpad's dump_syms executable.
+# @global CMAKE_STRIP  (ELF, optional)  Path to the strip executable if the target platform is different.
+function(dump_syms_and_strip targetName) # toPath
+    get_target_property(targetType ${targetName} TYPE)
+    get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
+    if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
+        set(targetOutputName ${targetName})
+    endif()
+
+    set(argIdx -1)
+    foreach(arg ${ARGN})
+        math(EXPR argIdx "${argIdx}+1")
+        if(${argIdx} EQUAL 0)
+            set(toPath "${arg}")
+        else()
+            message(FATAL_ERROR "dump_syms_and_strip: wrong aguments number for \"${targetName}\"")
+        endif()
+    endforeach()
+
+    if(NOT "${targetType}" MATCHES "(EXECUTABLE|SHARED_LIBRARY)")
+        message(FATAL_ERROR "dump_syms_and_strip: \"${targetName}\" must be EXECUTABLE or SHARED_LIBRARY")
+    endif()
+    get_target_property(wasTheCopyBefore ${targetName} copy_release_binary)
+    if(wasTheCopyBefore)
+        message(WARNING "dump_syms_and_strip: called after copy_release_binary")
+    endif()
+
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         return()
     endif()
-    if(NOT TARGET ${targetName})
-        message(FATAL_ERROR "breakpad_dump_and_strip: wrong target ${targetName}")
+    if("${toPath}" STREQUAL "WORKDIR")
+        set(toPath "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${targetOutputName}")
+    elseif("${toPath}" STREQUAL "")
+        set(toPath "${targetOutputName}")
+    else()
+        set(toPath "${CMAKE_SOURCE_DIR}/workdir/${toPath}")
     endif()
+
     if(${BUILD_PLATFORM} STREQUAL "Windows")
-        return()
-    elseif(NOT ${BUILD_PLATFORM} STREQUAL "Linux")
-        message(WARNING "breakpad_dump_and_strip: ${BUILD_PLATFORM} platform has not been tested")
-        return()
-    endif()
-    if("${BREAKPAD_DUMP_SYMS}" STREQUAL "")
-        message(WARNING "breakpad_dump_and_strip: BREAKPAD_DUMP_SYMS is not specified")
-        return()
-    endif()
-    if(NOT EXISTS "${BREAKPAD_DUMP_SYMS}")
-        message(FATAL_ERROR "breakpad_dump_and_strip: dump_syms is not found (path: ${BREAKPAD_DUMP_SYMS})")
-    endif()
+        if(NOT "${BREAKPAD_DUMP_SYMS}" STREQUAL "")
+            message(WARNING "dump_syms_and_strip: BREAKPAD_DUMP_SYMS is specified but not needed on Windows")
+        endif()
 
-    add_custom_command(
-        VERBATIM
-        TARGET ${targetName} POST_BUILD
-        WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
-        COMMAND ${CMAKE_COMMAND}
-            -DRUN=breakpad_dump_and_strip
+        cmake_minimum_required(VERSION 3.18)
+        add_custom_command(
+            VERBATIM
+            TARGET ${targetName} POST_BUILD
+            WORKING_DIRECTORY "${BUILD_DIRECTORY}"
+            COMMAND ${CMAKE_COMMAND}
+                -DRUN=windows_pdb_zip
 
-            -DBREAKPAD_DUMP_SYMS=${BREAKPAD_DUMP_SYMS}
-            -DCMAKE_STRIP=${CMAKE_STRIP}
-            -DTARGET_FILE=${targetName}
+                -DPDB_FILE=${BUILD_DIRECTORY}/${targetOutputName}.pdb
+                -DTARGET_NAME=${targetOutputName}
+                -DTO_PATH=${toPath}
 
-            -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
+                -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
+        )
+    elseif(${BUILD_PLATFORM} STREQUAL "Linux")
+        if("${BREAKPAD_DUMP_SYMS}" STREQUAL "")
+            if(EXISTS "${BUILD_DIRECTORY}/breakpad_dump_syms")
+                set(BREAKPAD_DUMP_SYMS "${BUILD_DIRECTORY}/breakpad_dump_syms")
+            elseif(EXISTS "${BUILD_DIRECTORY}/dump_syms")
+                set(BREAKPAD_DUMP_SYMS "${BUILD_DIRECTORY}/dump_syms")
+            else()
+                message(WARNING "dump_syms_and_strip: BREAKPAD_DUMP_SYMS is not specified")
+                return()
+            endif()
+        endif()
+        if(NOT EXISTS "${BREAKPAD_DUMP_SYMS}")
+            message(FATAL_ERROR "dump_syms_and_strip: dump_syms is not found (path: ${BREAKPAD_DUMP_SYMS})")
+        endif()
+
+        cmake_minimum_required(VERSION 3.18)
+        add_custom_command(
+            VERBATIM
+            TARGET ${targetName} POST_BUILD
+            WORKING_DIRECTORY "${BUILD_DIRECTORY}"
+            COMMAND ${CMAKE_COMMAND}
+                -DRUN=breakpad_dump_and_strip
+
+                -DBREAKPAD_DUMP_SYMS=${BREAKPAD_DUMP_SYMS}
+                -DCMAKE_STRIP=${CMAKE_STRIP}
+                -DTARGET_FILE=${targetName}
+                -DTO_PATH=${toPath}
+
+                -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
+        )
+    else()
+        message(WARNING "dump_syms_and_strip: ${BUILD_PLATFORM} platform has not been tested")
+    endif()
+endfunction(dump_syms_and_strip)
+
+function(__windows_pdb_zip)
+    cmake_minimum_required(VERSION 3.18)
+    if(NOT EXISTS "${PDB_FILE}")
+        message(FATAL_ERROR "dump_syms_and_strip: pdb is not found (path: ${PDB_FILE})")
+    endif()
+    file(ARCHIVE_CREATE
+        OUTPUT "${TO_PATH}.pdb.zip"
+        PATHS "${PDB_FILE}"
+        FORMAT zip
     )
-endfunction(breakpad_dump_and_strip)
+    message("${TARGET_NAME}.pdb.zip created")
+endfunction(__windows_pdb_zip)
 
 function(__breakpad_dump_and_strip)
     execute_process(
@@ -1061,8 +1137,11 @@ function(__breakpad_dump_and_strip)
         OUTPUT_VARIABLE result
     )
     # "MODULE Linux arm64 912C385C93DFB00C2B4D31F83BFF5BF90 TARGET_FILE"
-    string(REGEX MATCH "MODULE[ ]+[a-zA-Z0-9]+[ ]+[a-zA-Z0-9]+[ ]+([a-zA-Z0-9]+)[ ]+" result ${result})
+    string(REGEX MATCH "MODULE[ ]+[_a-zA-Z0-9]+[ ]+[_a-zA-Z0-9]+[ ]+([a-zA-Z0-9]+)[ ]+" matched ${result})
     set(buildId "${CMAKE_MATCH_1}")
+    if("${buildId}" STREQUAL "")
+        message(FATAL_ERROR "dump_syms_and_strip: can't get the build id from\n${result}")
+    endif()
     message("${TARGET_FILE} build id: ${buildId}")
     file(MAKE_DIRECTORY "symbols/${TARGET_FILE}/${buildId}/")
 
@@ -1074,7 +1153,7 @@ function(__breakpad_dump_and_strip)
 
     cmake_minimum_required(VERSION 3.18)
     file(ARCHIVE_CREATE
-        OUTPUT "${TARGET_FILE}.sym.zip"
+        OUTPUT "${TO_PATH}.sym.zip"
         PATHS "symbols/${TARGET_FILE}/${buildId}/${TARGET_FILE}.sym"
         FORMAT zip
     )
@@ -1190,53 +1269,48 @@ function(__crutch_for_msvs_bug_with_merges)
 endfunction(__crutch_for_msvs_bug_with_merges)
 
 
-# @param targetName
-# @param toPath  (optional)  "workdir/bin_***/{to/Path}.ext"
-function(copy_release_binary_to_workdir targetName)
+# @param targetName          Target name for which the binary will be copied.
+# @param toPath              "workdir/{to/Path}.ext"
+#        -/-     "WORKDIR":  "workdir/bin_{arch}/{targetOutputName}.ext"
+function(copy_release_binary targetName toPath)
     get_target_property(targetType ${targetName} TYPE)
     get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
     if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
         set(targetOutputName ${targetName})
     endif()
 
-    set(argIdx -1)
-    set(toPath "${targetOutputName}")
-    foreach(arg ${ARGN})
-        math(EXPR argIdx "${argIdx}+1")
-        if(${argIdx} EQUAL 0)
-            set(toPath "${arg}")
-        else()
-            message(FATAL_ERROR "copy_release_binary_to_workdir: wrong aguments number for \"${targetName}\"")
-        endif()
-    endforeach()
-
     if("${targetType}" STREQUAL "EXECUTABLE")
-        set(targetOutputName "${targetOutputName}${CMAKE_EXECUTABLE_SUFFIX}")
-        set(toPath "${toPath}${CMAKE_EXECUTABLE_SUFFIX}")
+        set(fileExt "${CMAKE_EXECUTABLE_SUFFIX}")
     elseif("${targetType}" STREQUAL "SHARED_LIBRARY")
-        set(targetOutputName "${targetOutputName}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-        set(toPath "${toPath}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        set(fileExt "${CMAKE_SHARED_LIBRARY_SUFFIX}")
     else()
-        message(FATAL_ERROR "copy_release_binary_to_workdir: \"${targetName}\" must be EXECUTABLE or SHARED_LIBRARY")
+        message(FATAL_ERROR "copy_release_binary: \"${targetName}\" must be EXECUTABLE or SHARED_LIBRARY")
     endif()
 
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         return()
     endif()
 
-    if(MSVC AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${CMAKE_BUILD_TYPE}/${targetOutputName}")
+    set(fullFrom "${BUILD_DIRECTORY}/${targetOutputName}${fileExt}")
+    if("${toPath}" STREQUAL "WORKDIR")
+        set(fullTo "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${targetOutputName}${fileExt}")
     else()
-        set(fullfrom "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${targetOutputName}")
+        set(fullTo "${CMAKE_SOURCE_DIR}/workdir/${toPath}${fileExt}")
     endif()
-    set(fullto "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${toPath}")
 
     add_custom_command(
         TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${fullfrom}" "${fullto}"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${fullFrom}" "${fullTo}"
     )
-endfunction(copy_release_binary_to_workdir)
+    set_target_properties(${targetName} PROPERTIES copy_release_binary TRUE)
+endfunction(copy_release_binary)
 
+
+#  ███████ ███    ██ ████████ ██████  ██    ██     ██████   ██████  ██ ███    ██ ████████ ███████
+#  ██      ████   ██    ██    ██   ██  ██  ██      ██   ██ ██    ██ ██ ████   ██    ██    ██
+#  █████   ██ ██  ██    ██    ██████    ████       ██████  ██    ██ ██ ██ ██  ██    ██    ███████
+#  ██      ██  ██ ██    ██    ██   ██    ██        ██      ██    ██ ██ ██  ██ ██    ██         ██
+#  ███████ ██   ████    ██    ██   ██    ██        ██       ██████  ██ ██   ████    ██    ███████
 
 if("${RUN}" STREQUAL "")
     if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
@@ -1255,6 +1329,9 @@ if("${RUN}" STREQUAL "")
 
 elseif("${RUN}" STREQUAL "qt5_create_ts_and_qm")
     __qt5_create_ts_and_qm_impl()
+
+elseif("${RUN}" STREQUAL "windows_pdb_zip")
+    __windows_pdb_zip()
 
 elseif("${RUN}" STREQUAL "breakpad_dump_and_strip")
     __breakpad_dump_and_strip()

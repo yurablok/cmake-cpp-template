@@ -18,4 +18,4 @@ add_metainfo(${PROJECT_NAME}
     COMPANY "HOME Co."
     COPYRIGHT "© 2007-2024 HOME Co. All rights reserved."
 )
-copy_release_binary_to_workdir(${PROJECT_NAME} "shared_test")
+copy_release_binary(${PROJECT_NAME} WORKDIR)

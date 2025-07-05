@@ -86,12 +86,14 @@ target_sources(${PROJECT_NAME} PRIVATE
     #"${WIN32_RESOURCES}"
 )
 
+string(TIMESTAMP CURRENT_YEAR "%Y")
 add_metainfo(${PROJECT_NAME}
     VERSION 1.2.3.4-alpha5
     DESCRIPTION "Application Template"
     PRODUCT "CMake C++ Template"
     COMPANY "HOME Co."
-    COPYRIGHT "© 2007-2024 HOME Co. All rights reserved."
+    COPYRIGHT "© 2007-${CURRENT_YEAR} HOME Co. All rights reserved."
     ICON "icon"
 )
-copy_release_binary_to_workdir(${PROJECT_NAME})
+#dump_syms_and_strip(${PROJECT_NAME} WORKDIR)
+copy_release_binary(${PROJECT_NAME} WORKDIR)
