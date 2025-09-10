@@ -10,6 +10,13 @@
     { "name": "x64-Debug-Mac", "configurePreset": "x64-Debug-Mac" },
     { "name": "x64-Release-Mac", "configurePreset": "x64-Release-Mac" },
 
+    { "name": "x64-Debug-VS2026", "configurePreset": "x64-Debug-VS2026" },
+    { "name": "arm64-Debug-VS2026", "configurePreset": "arm64-Debug-VS2026" },
+    { "name": "x32-Debug-VS2026", "configurePreset": "x32-Debug-VS2026" },
+    { "name": "x64-Release-VS2026", "configurePreset": "x64-Release-VS2026" },
+    { "name": "arm64-Release-VS2026", "configurePreset": "arm64-Release-VS2026" },
+    { "name": "x32-Release-VS2026", "configurePreset": "x32-Release-VS2026" },
+
     { "name": "x64-Debug-VS2022", "configurePreset": "x64-Debug-VS2022" },
     { "name": "arm64-Debug-VS2022", "configurePreset": "arm64-Debug-VS2022" },
     { "name": "x32-Debug-VS2022", "configurePreset": "x32-Debug-VS2022" },
@@ -70,9 +77,17 @@
       }
     },
     {
+      "name": "WindowsBaseVS2026", "inherits": "Base", "hidden": true,
+      "generator": "Visual Studio 18 2026",
+      "condition": { "type": "inList", "string": "$env{VisualStudioVersion}", "list": [ "18.0", "" ] },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Windows" ] }
+      }
+    },
+    {
       "name": "WindowsBaseVS2022", "inherits": "Base", "hidden": true,
       "generator": "Visual Studio 17 2022",
-      "condition": { "type": "inList", "string": "$env{VisualStudioVersion}", "list": [ "17.0", "" ] },
+      "condition": { "type": "equals", "lhs": "$env{VisualStudioVersion}", "rhs": "17.0" },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "Windows" ] }
       }
@@ -133,6 +148,49 @@
     },
     {
       "name": "x64-Release-Mac", "inherits": "MacBase",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "x64-Debug-VS2026", "inherits": "WindowsBaseVS2026",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    },
+    {
+      "name": "arm64-Debug-VS2026", "inherits": "WindowsBaseVS2026",
+      "architecture": { "value": "ARM64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    },
+    {
+      "name": "x32-Debug-VS2026", "inherits": "WindowsBaseVS2026",
+      "architecture": { "value": "Win32", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
+      }
+    },
+    {
+      "name": "x64-Release-VS2026", "inherits": "WindowsBaseVS2026",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "arm64-Release-VS2026", "inherits": "WindowsBaseVS2026",
+      "architecture": { "value": "ARM64", "strategy": "set" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "x32-Release-VS2026", "inherits": "WindowsBaseVS2026",
+      "architecture": { "value": "Win32", "strategy": "set" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
       }
