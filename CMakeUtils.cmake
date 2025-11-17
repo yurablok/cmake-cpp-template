@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.14  2025-Nov-17    Added `get_target_output_name`.
 # v0.13  2025-Jul-07    Changed `breakpad_dump_and_strip` to `dump_syms_and_strip`.
 #                       Changed `copy_release_binary_to_workdir` to `copy_release_binary`.
 # v0.12  2025-May-23    Added `CMAKE_CXX_STANDARD_AVAILABLE`.
@@ -444,12 +445,6 @@ endfunction(add_option)
 # @param COPYRIGHT    (optional)  "© 2007-2024 HOME Co. All rights reserved."
 # @param ICON         (optional)  "icon" (without the extension) -> Windows: .ico, MacOS: .icns
 function(add_metainfo targetName)
-    get_target_property(targetType ${targetName} TYPE)
-    get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
-    if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
-        set(targetOutputName ${targetName})
-    endif()
-
     cmake_parse_arguments(arg "" "VERSION;DESCRIPTION;COMPANY;PRODUCT;COPYRIGHT;ICON" "" "${ARGN}")
 
     string(REGEX MATCH "([0-9]+)\\.?([0-9]+)?\\.?([0-9]+)?\\.?([0-9]+)?-?([-0-9a-zA-Z]+)?" result ${arg_VERSION})
@@ -466,13 +461,12 @@ function(add_metainfo targetName)
         set(CMAKE_MATCH_4 "0")
     endif()
 
+    get_target_property(targetType ${targetName} TYPE)
     if("${targetType}" STREQUAL "EXECUTABLE")
-        set(targetOutputName "${targetOutputName}${CMAKE_EXECUTABLE_SUFFIX}")
     elseif("${targetType}" STREQUAL "SHARED_LIBRARY")
         if(NOT "${arg_ICON}" STREQUAL "")
             message(FATAL_ERROR "add_metainfo: ${targetName} is a library and can't has an icon")
         endif()
-        set(targetOutputName "${targetOutputName}${CMAKE_SHARED_LIBRARY_SUFFIX}")
     else()
         message(FATAL_ERROR "add_metainfo: ${targetName} must be EXECUTABLE or SHARED_LIBRARY")
     endif()
@@ -618,6 +612,7 @@ const char* ${targetName}_VersionQualifier();
     list(APPEND targetSources "${hPath}" "${cPath}")
 
     if(WIN32)
+        get_target_output_name(${targetName} targetOutputName "")
         if(NOT "${arg_ICON}" STREQUAL "")
             set(icon "\nIDI_ICON1 ICON DISCARDABLE \"${arg_ICON}.ico\"\n")
         endif()
@@ -1024,17 +1019,11 @@ endfunction(__find_msvc_qt5)
 
 # @param targetName                     Target name for which the symbols will be dumped.
 # @param toPath             (optional)  "workdir/{to/Path}.sym|pdb.zip"
-#        -/-                "WORKDIR":  "workdir/bin_{arch}/{targetOutputName}.sym|pdb.zip"
-#        -/-                  default:  "build/{type}/{targetOutputName}.sym|pdb.zip"
+#        -/-                "WORKDIR":  "workdir/bin_{arch}/{fileName}.sym|pdb.zip"
+#        -/-                  default:  "build/{type}/{fileName}.sym|pdb.zip"
 # @global BREAKPAD_DUMP_SYMS     (ELF)  Path to the Breakpad's dump_syms executable.
 # @global CMAKE_STRIP  (ELF, optional)  Path to the strip executable if the target platform is different.
 function(dump_syms_and_strip targetName) # toPath
-    get_target_property(targetType ${targetName} TYPE)
-    get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
-    if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
-        set(targetOutputName ${targetName})
-    endif()
-
     set(argIdx -1)
     foreach(arg ${ARGN})
         math(EXPR argIdx "${argIdx}+1")
@@ -1045,6 +1034,7 @@ function(dump_syms_and_strip targetName) # toPath
         endif()
     endforeach()
 
+    get_target_property(targetType ${targetName} TYPE)
     if(NOT "${targetType}" MATCHES "(EXECUTABLE|SHARED_LIBRARY)")
         message(FATAL_ERROR "dump_syms_and_strip: \"${targetName}\" must be EXECUTABLE or SHARED_LIBRARY")
     endif()
@@ -1056,10 +1046,12 @@ function(dump_syms_and_strip targetName) # toPath
     if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
         return()
     endif()
+
+    get_target_output_name(${targetName} fileName fileExt)
     if("${toPath}" STREQUAL "WORKDIR")
-        set(toPath "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${targetOutputName}")
+        set(toPath "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${fileName}")
     elseif("${toPath}" STREQUAL "")
-        set(toPath "${targetOutputName}")
+        set(toPath "${fileName}")
     else()
         set(toPath "${CMAKE_SOURCE_DIR}/workdir/${toPath}")
     endif()
@@ -1077,8 +1069,8 @@ function(dump_syms_and_strip targetName) # toPath
             COMMAND ${CMAKE_COMMAND}
                 -DRUN=windows_pdb_zip
 
-                -DPDB_FILE=${BUILD_DIRECTORY}/${targetOutputName}.pdb
-                -DTARGET_NAME=${targetOutputName}
+                -DPDB_FILE=${BUILD_DIRECTORY}/${fileName}.pdb
+                -DTARGET_FILE_NAME=${fileName}
                 -DTO_PATH=${toPath}
 
                 -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
@@ -1108,7 +1100,8 @@ function(dump_syms_and_strip targetName) # toPath
 
                 -DBREAKPAD_DUMP_SYMS=${BREAKPAD_DUMP_SYMS}
                 -DCMAKE_STRIP=${CMAKE_STRIP}
-                -DTARGET_FILE=${targetName}
+                -DTARGET_FILE_NAME=${fileName}
+                -DTARGET_FILE_EXT=${fileExt}
                 -DTO_PATH=${toPath}
 
                 -P ${CMAKE_SOURCE_DIR}/CMakeUtils.cmake
@@ -1128,48 +1121,49 @@ function(__windows_pdb_zip)
         PATHS "${PDB_FILE}"
         FORMAT zip
     )
-    message("${TARGET_NAME}.pdb.zip created")
+    message("${TARGET_FILE_NAME}.pdb.zip created")
 endfunction(__windows_pdb_zip)
 
 function(__breakpad_dump_and_strip)
     execute_process(
-        COMMAND "${BREAKPAD_DUMP_SYMS}" -i ${TARGET_FILE}
+        COMMAND "${BREAKPAD_DUMP_SYMS}" -i "${TARGET_FILE_NAME}${TARGET_FILE_EXT}"
         OUTPUT_VARIABLE result
     )
-    # "MODULE Linux arm64 912C385C93DFB00C2B4D31F83BFF5BF90 TARGET_FILE"
-    string(REGEX MATCH "MODULE[ ]+[_a-zA-Z0-9]+[ ]+[_a-zA-Z0-9]+[ ]+([a-zA-Z0-9]+)[ ]+" matched ${result})
+    # "MODULE Linux arm64 912C385C93DFB00C2B4D31F83BFF5BF90 TARGET_FILE_NAME"
+    string(REGEX MATCH "MODULE[ ]+[_a-zA-Z0-9]+[ ]+[_a-zA-Z0-9]+[ ]+([a-zA-Z0-9]+)[ ]+" matched "${result}")
     set(buildId "${CMAKE_MATCH_1}")
     if("${buildId}" STREQUAL "")
-        message(FATAL_ERROR "dump_syms_and_strip: can't get the build id from\n${result}")
+        message(FATAL_ERROR "dump_syms_and_strip: can't get the build id from \"${result}\"\n"
+            "${BREAKPAD_DUMP_SYMS} -i ${TARGET_FILE_NAME}${TARGET_FILE_EXT}")
     endif()
-    message("${TARGET_FILE} build id: ${buildId}")
-    file(MAKE_DIRECTORY "symbols/${TARGET_FILE}/${buildId}/")
+    message("${TARGET_FILE_NAME}${TARGET_FILE_EXT} build id: ${buildId}")
+    file(MAKE_DIRECTORY "symbols/${TARGET_FILE_NAME}/${buildId}/")
 
     execute_process(
-        COMMAND "${BREAKPAD_DUMP_SYMS}" ${TARGET_FILE}
+        COMMAND "${BREAKPAD_DUMP_SYMS}" "${TARGET_FILE_NAME}${TARGET_FILE_EXT}"
         OUTPUT_VARIABLE result
     )
-    file(WRITE "symbols/${TARGET_FILE}/${buildId}/${TARGET_FILE}.sym" "${result}")
+    file(WRITE "symbols/${TARGET_FILE_NAME}/${buildId}/${TARGET_FILE_NAME}.sym" "${result}")
 
     cmake_minimum_required(VERSION 3.18)
     file(ARCHIVE_CREATE
         OUTPUT "${TO_PATH}.sym.zip"
-        PATHS "symbols/${TARGET_FILE}/${buildId}/${TARGET_FILE}.sym"
+        PATHS "symbols/${TARGET_FILE_NAME}/${buildId}/${TARGET_FILE_NAME}.sym"
         FORMAT zip
     )
     file(REMOVE_RECURSE "symbols")
 
     if("${CMAKE_STRIP}" STREQUAL "")
         execute_process(
-            COMMAND strip ${TARGET_FILE}
+            COMMAND strip "${TARGET_FILE_NAME}${TARGET_FILE_EXT}"
         )
     else()
         execute_process(
-            COMMAND "${CMAKE_STRIP}" ${TARGET_FILE}
+            COMMAND "${CMAKE_STRIP}" "${TARGET_FILE_NAME}${TARGET_FILE_EXT}"
         )
     endif()
 
-    message("${TARGET_FILE}.sym.zip created")
+    message("${TARGET_FILE_NAME}.sym.zip created")
 endfunction(__breakpad_dump_and_strip)
 
 
@@ -1269,21 +1263,53 @@ function(__crutch_for_msvs_bug_with_merges)
 endfunction(__crutch_for_msvs_bug_with_merges)
 
 
+# param      targetName             Target name.
+# param[out] targetOutputName       Target output file name without an extension.
+# param[out] targetOutputExtension  Target output file extension ("", ".so", ".exe", ".dll", ...).
+function(get_target_output_name targetName targetOutputName targetOutputExtension)
+    if(NOT TARGET ${targetName})
+        message(FATAL_ERROR "get_target_output_name: Target \"${targetName}\" does not exist.")
+    endif()
+
+    get_target_property(filePrefix ${targetName} PREFIX)
+    get_target_property(targetType ${targetName} TYPE)
+    if("${targetType}" STREQUAL "EXECUTABLE")
+        set(fileSuffix ${CMAKE_EXECUTABLE_SUFFIX})
+    elseif("${targetType}" STREQUAL "SHARED_LIBRARY")
+        if(UNIX AND "${filePrefix}" STREQUAL "filePrefix-NOTFOUND")
+            set(filePrefix "lib")
+        endif()
+        set(fileSuffix ${CMAKE_SHARED_LIBRARY_SUFFIX})
+        #TODO: macOS FRAMEWORK==TRUE => .framework
+    elseif("${targetType}" STREQUAL "STATIC_LIBRARY")
+        if(UNIX AND "${filePrefix}" STREQUAL "filePrefix-NOTFOUND")
+            set(filePrefix "lib")
+        endif()
+        set(fileSuffix ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    elseif("${targetType}" STREQUAL "MODULE_LIBRARY")
+        set(fileSuffix ${CMAKE_SHARED_MODULE_SUFFIX})
+    elseif("${targetType}" STREQUAL "INTERFACE_LIBRARY")
+        message(FATAL_ERROR "get_target_output_name: Target \"${targetName}\" is INTERFACE_LIBRARY.")
+    endif()
+
+    if("${filePrefix}" STREQUAL "filePrefix-NOTFOUND")
+        set(filePrefix "")
+    endif()
+    get_target_property(fileName ${targetName} OUTPUT_NAME)
+    if("${fileName}" STREQUAL "fileName-NOTFOUND")
+        set(fileName ${filePrefix}${targetName})
+    endif()
+    set(${targetOutputName} "${fileName}" PARENT_SCOPE)
+    set(${targetOutputExtension} "${fileSuffix}" PARENT_SCOPE)
+endfunction(get_target_output_name)
+
+
 # @param targetName          Target name for which the binary will be copied.
 # @param toPath              "workdir/{to/Path}.ext"
 #        -/-     "WORKDIR":  "workdir/bin_{arch}/{targetOutputName}.ext"
 function(copy_release_binary targetName toPath)
     get_target_property(targetType ${targetName} TYPE)
-    get_target_property(targetOutputName ${targetName} OUTPUT_NAME)
-    if("${targetOutputName}" STREQUAL "targetOutputName-NOTFOUND")
-        set(targetOutputName ${targetName})
-    endif()
-
-    if("${targetType}" STREQUAL "EXECUTABLE")
-        set(fileExt "${CMAKE_EXECUTABLE_SUFFIX}")
-    elseif("${targetType}" STREQUAL "SHARED_LIBRARY")
-        set(fileExt "${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    else()
+    if(NOT "${targetType}" MATCHES "(EXECUTABLE|SHARED_LIBRARY)")
         message(FATAL_ERROR "copy_release_binary: \"${targetName}\" must be EXECUTABLE or SHARED_LIBRARY")
     endif()
 
@@ -1291,9 +1317,10 @@ function(copy_release_binary targetName toPath)
         return()
     endif()
 
-    set(fullFrom "${BUILD_DIRECTORY}/${targetOutputName}${fileExt}")
+    get_target_output_name(${targetName} fileName fileExt)
+    set(fullFrom "${BUILD_DIRECTORY}/${fileName}${fileExt}")
     if("${toPath}" STREQUAL "WORKDIR")
-        set(fullTo "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${targetOutputName}${fileExt}")
+        set(fullTo "${CMAKE_SOURCE_DIR}/workdir/bin_${BUILD_ARCH}/${fileName}${fileExt}")
     else()
         set(fullTo "${CMAKE_SOURCE_DIR}/workdir/${toPath}${fileExt}")
     endif()
