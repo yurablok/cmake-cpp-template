@@ -74,7 +74,7 @@ work using VSCode and MS VisualStudio.
       ```
       ```shell
       $ grep --binary-files=text "\$Id:" application
-      $Id: v1.2.3.4-alpha5 | Application Template | CMake C++ Template | HOME Co. | © 2007-2024 HOME Co. All rights reserved. $
+      $Id: v1.2.3.4-alpha5; Application Template; CMake C++ Template; HOME Co.; © 2007-2024 HOME Co. All rights reserved. $
       ```
       ```shell
       $ readelf -p .note.version -p .note.description -p .note.product -p .note.company -p .note.copyright application
@@ -141,7 +141,7 @@ work using VSCode and MS VisualStudio.
                   @(#) Product Name: CMake C++ Template\n
                   @(#) Company Name: HOME Co.\n
                   @(#) Copyright: � 2007-2024 HOME Co. All rights reserved.\n
-                  $Id: v1.2.3.4-alpha5 | Application Template | CMake C++ Template | HOME Co. | � 2007-2024 HOME Co. All rights reserved. $\n
+                  $Id: v1.2.3.4-alpha5; Application Template; CMake C++ Template; HOME Co.; � 2007-2024 HOME Co. All rights reserved. $\n
       ```
     </details>
 - `add_option` as a better variant of `set(...CACHE...)` that has the next features:

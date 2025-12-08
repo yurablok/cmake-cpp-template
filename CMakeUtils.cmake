@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.15  2025-Dec-08    Fixed preserving the "sccsid" section when using MSVC.
 # v0.14  2025-Nov-17    Added `get_target_output_name`.
 # v0.13  2025-Jul-07    Changed `breakpad_dump_and_strip` to `dump_syms_and_strip`.
 #                       Changed `copy_release_binary_to_workdir` to `copy_release_binary`.
@@ -483,25 +484,28 @@ function(add_metainfo targetName)
 #if defined(__unix__)
   __attribute__((used, section(\".sccsid\")))
 #else
+# pragma section(\"sccsid\", read)
 # if defined(__cplusplus)
     extern \"C\"
 # else
     extern
 # endif
+__declspec(allocate(\"sccsid\"))
 #endif
 // Source Code Control System (SCCS) convention
 // grep --binary-files=text \"@(#)\" application
 // readelf -p .sccsid {application}
-const char sccsid[] = \"\\n\\n\"
+volatile const char sccsid[] = \"\\n\\n\"
     \"@(#) Version: v${arg_VERSION}\\n\"
     \"@(#) Description: ${arg_DESCRIPTION}\\n\"
     \"@(#) Product Name: ${arg_PRODUCT}\\n\"
     \"@(#) Company Name: ${arg_COMPANY}\\n\"
     \"@(#) Copyright: ${arg_COPYRIGHT}\\n\"
     \"\\n\"
-    \"$Id: v${arg_VERSION} | ${arg_DESCRIPTION} | ${arg_PRODUCT}\"
-    \" | ${arg_COMPANY} | ${arg_COPYRIGHT} $\\n\"
+    \"$Id: v${arg_VERSION}; ${arg_DESCRIPTION}; ${arg_PRODUCT};\"
+    \" ${arg_COMPANY}; ${arg_COPYRIGHT} $\\n\"
 \"\\n\";
+static volatile const void* sccsid_anchor = sccsid;
 
 #if defined(__unix__)
 // readelf -p .note.version {application}
@@ -531,6 +535,7 @@ const char sccsid[] = \"\\n\\n\"
 #endif
 
 const char* ${targetName}_Version() {
+    (void)sccsid_anchor;
     return \"${arg_VERSION}\";
 }
 uint16_t ${targetName}_VersionMajor() {
