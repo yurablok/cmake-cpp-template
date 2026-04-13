@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.16  2026-Apr-13    Expanded generating metainfo.
 # v0.15  2025-Dec-08    Fixed preserving the "sccsid" section when using MSVC.
 # v0.14  2025-Nov-17    Added `get_target_output_name`.
 # v0.13  2025-Jul-07    Changed `breakpad_dump_and_strip` to `dump_syms_and_strip`.
@@ -44,9 +45,20 @@ function(init_project)
         message(FATAL_ERROR "At least one target must be specified.")
     endif()
 
+    # x86, i386, i486, i586, i686       => x32
+    # x86_64, AMD64, x86-64-S           => x64, x64v3, ...
+    # arm, armv5, armv6, armv7, armv7s,
+    #   armv7k, armhf                   => arm32, arm32v7, ...
+    # aarch64, arm64, arm64e, arm64_32  => arm64, arm64v8, arm64e, arm64_32, ...
+    # riscv32, RISCV32                  => rv32, rv32i, ...
+    # riscv64, RISCV64                  => rv64, rv64gc, rv64imafdc, ...
+    # ppc, powerpc                      => ppc32, ppc32be, ...
+    # ppc64, ppc64le                    => ppc64, ppc64le, ...
     if("${BUILD_ARCH}" STREQUAL "")
         if(NOT "${CMAKE_CXX_COMPILER_ARCHITECTURE_ID}" STREQUAL "")
             set(CMAKE_TARGET_ARCH ${CMAKE_CXX_COMPILER_ARCHITECTURE_ID})
+        elseif(NOT "${CMAKE_OSX_ARCHITECTURES}" STREQUAL "")
+            set(CMAKE_TARGET_ARCH ${CMAKE_OSX_ARCHITECTURES})
         else()
             set(CMAKE_TARGET_ARCH ${CMAKE_SYSTEM_PROCESSOR})
         endif()
@@ -56,6 +68,12 @@ function(init_project)
                 set(BUILD_ARCH "arm64")
             else()
                 set(BUILD_ARCH "arm32")
+            endif()
+        elseif("${CMAKE_TARGET_ARCH}" MATCHES "riscv.*")
+            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                set(BUILD_ARCH "rv64")
+            else()
+                set(BUILD_ARCH "rv32")
             endif()
         else()
             if(CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -444,7 +462,7 @@ endfunction(add_option)
 # @param PRODUCT      (optional)  "CMake C++ Template"
 # @param COMPANY      (optional)  "HOME Co."
 # @param COPYRIGHT    (optional)  "© 2007-2024 HOME Co. All rights reserved."
-# @param ICON         (optional)  "icon" (without the extension) -> Windows: .ico, MacOS: .icns
+# @param ICON         (optional)  "icon" (without the extension) => Windows: .ico, MacOS: .icns
 function(add_metainfo targetName)
     cmake_parse_arguments(arg "" "VERSION;DESCRIPTION;COMPANY;PRODUCT;COPYRIGHT;ICON" "" "${ARGN}")
 
@@ -496,13 +514,13 @@ __declspec(allocate(\"sccsid\"))
 // grep --binary-files=text \"@(#)\" application
 // readelf -p .sccsid {application}
 volatile const char sccsid[] = \"\\n\\n\"
-    \"@(#) Version: v${arg_VERSION}\\n\"
+    \"@(#) Version: v${arg_VERSION} ${BUILD_ARCH}\\n\"
     \"@(#) Description: ${arg_DESCRIPTION}\\n\"
     \"@(#) Product Name: ${arg_PRODUCT}\\n\"
     \"@(#) Company Name: ${arg_COMPANY}\\n\"
     \"@(#) Copyright: ${arg_COPYRIGHT}\\n\"
     \"\\n\"
-    \"$Id: v${arg_VERSION}; ${arg_DESCRIPTION}; ${arg_PRODUCT};\"
+    \"$Id: v${arg_VERSION} ${BUILD_ARCH}; ${arg_DESCRIPTION}; ${arg_PRODUCT};\"
     \" ${arg_COMPANY}; ${arg_COPYRIGHT} $\\n\"
 \"\\n\";
 static volatile const void* sccsid_anchor = sccsid;
@@ -527,13 +545,28 @@ static volatile const void* sccsid_anchor = sccsid;
             .name = NAME, \\
             .desc = TEXT \\
         }
-    ADD_NOTE(version,     \"${arg_VERSION}\", \"${arg_VERSION}\");
+    ADD_NOTE(version,     \"${arg_VERSION}\", \"${arg_VERSION} ${BUILD_ARCH}\");
     ADD_NOTE(description, \"description\",    \"${arg_DESCRIPTION}\");
     ADD_NOTE(product,     \"product\",        \"${arg_PRODUCT}\");
     ADD_NOTE(company,     \"company\",        \"${arg_COMPANY}\");
     ADD_NOTE(copyright,   \"copyright\",      \"${arg_COPYRIGHT}\");
 #endif
 
+const char* ${targetName}_Architecture() {
+    return \"${BUILD_ARCH}\";
+}
+const char* ${targetName}_Description() {
+    return \"${arg_DESCRIPTION}\";
+}
+const char* ${targetName}_Product() {
+    return \"${arg_PRODUCT}\";
+}
+const char* ${targetName}_Company() {
+    return \"${arg_COMPANY}\";
+}
+const char* ${targetName}_Copyright() {
+    return \"${arg_COPYRIGHT}\";
+}
 const char* ${targetName}_Version() {
     (void)sccsid_anchor;
     return \"${arg_VERSION}\";
@@ -563,6 +596,11 @@ const char* ${targetName}_VersionQualifier() {
 extern \"C\" {
 #endif
 
+const char* ${targetName}_Architecture();
+const char* ${targetName}_Description();
+const char* ${targetName}_Product();
+const char* ${targetName}_Company();
+const char* ${targetName}_Copyright();
 const char* ${targetName}_Version();
 uint16_t ${targetName}_VersionMajor();
 uint16_t ${targetName}_VersionMinor();
@@ -640,7 +678,7 @@ BEGIN
         BEGIN
             VALUE \"FileDescription\", \"${arg_DESCRIPTION}\\0\"
             VALUE \"ProductName\", \"${arg_PRODUCT}\\0\"
-            VALUE \"ProductVersion\", \"${arg_VERSION}\\0\"
+            VALUE \"ProductVersion\", \"${arg_VERSION} ${BUILD_ARCH}\\0\"
             VALUE \"CompanyName\", \"${arg_COMPANY}\\0\"
             VALUE \"LegalCopyright\", \"${arg_COPYRIGHT}\\0\"
             VALUE \"OriginalFilename\", \"${targetOutputName}\\0\"
@@ -656,7 +694,7 @@ END
             # ClangCL: UTF-16 (LE) byte order mark detected in '***.rc', but encoding is not supported
             if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
                 file(WRITE "${rcPath}" "${rc}")
-                message(WARNING "ClanCL supports only ASCII .rc")
+                message(WARNING "ClangCL supports only ASCII .rc")
             else()
                 file(WRITE "${rcPath}.utf8" "${rc}")
                 execute_process(
