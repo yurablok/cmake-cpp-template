@@ -2,6 +2,8 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.17  2026-Jun-11    Added explicit `-gdwarf-4` for GCC [4.7, 5.0).
+#                       Fixed `dump_syms_and_strip` for libs.
 # v0.16  2026-Apr-13    Expanded generating metainfo.
 # v0.15  2025-Dec-08    Fixed preserving the "sccsid" section when using MSVC.
 # v0.14  2025-Nov-17    Added `get_target_output_name`.
@@ -21,6 +23,9 @@
 # v0.3   2023-Jan-24    Added `add_option`.
 # v0.2   2022-Dec-24    Added support for Windows ARM64.
 # v0.1   2022-Oct-18    First release.
+if("${RUN}" STREQUAL "")
+    message("----- CMakeUtils v0.17 -----")
+endif()
 
 # Include this file before the main `project(...)`
 
@@ -212,6 +217,11 @@ function(init_project)
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
             message("Compiler: GCC v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fdiagnostics-color=always)
+            if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 4.7
+                    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+                set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g1 -gdwarf-4 -DNDEBUG" PARENT_SCOPE)
+                set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g1 -gdwarf-4 -DNDEBUG" PARENT_SCOPE)
+            endif()
             if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
                 add_link_options(-fuse-ld=gold)
             elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12.1)
@@ -1180,18 +1190,18 @@ function(__breakpad_dump_and_strip)
             "${BREAKPAD_DUMP_SYMS} -i ${TARGET_FILE_NAME}${TARGET_FILE_EXT}")
     endif()
     message("${TARGET_FILE_NAME}${TARGET_FILE_EXT} build id: ${buildId}")
-    file(MAKE_DIRECTORY "symbols/${TARGET_FILE_NAME}/${buildId}/")
+    file(MAKE_DIRECTORY "symbols/${TARGET_FILE_NAME}${TARGET_FILE_EXT}/${buildId}/")
 
     execute_process(
         COMMAND "${BREAKPAD_DUMP_SYMS}" "${TARGET_FILE_NAME}${TARGET_FILE_EXT}"
         OUTPUT_VARIABLE result
     )
-    file(WRITE "symbols/${TARGET_FILE_NAME}/${buildId}/${TARGET_FILE_NAME}.sym" "${result}")
+    file(WRITE "symbols/${TARGET_FILE_NAME}${TARGET_FILE_EXT}/${buildId}/${TARGET_FILE_NAME}${TARGET_FILE_EXT}.sym" "${result}")
 
     cmake_minimum_required(VERSION 3.18)
     file(ARCHIVE_CREATE
         OUTPUT "${TO_PATH}.sym.zip"
-        PATHS "symbols/${TARGET_FILE_NAME}/${buildId}/${TARGET_FILE_NAME}.sym"
+        PATHS "symbols/${TARGET_FILE_NAME}${TARGET_FILE_EXT}/${buildId}/${TARGET_FILE_NAME}${TARGET_FILE_EXT}.sym"
         FORMAT zip
     )
     file(REMOVE_RECURSE "symbols")
