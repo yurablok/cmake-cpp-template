@@ -33,6 +33,14 @@ work using VSCode and MS VisualStudio.
       )
       ```
       ```c
+      const char* application_Architecture(); // "x64"
+      const char* application_CxxStandard(); // "C++20"
+      const char* application_CompilerName(); // "GCC"
+      const char* application_CompilerVersion(); // "12.3.0"
+      const char* application_Description(); // "Application Template"
+      const char* application_Product(); // "CMake C++ Template"
+      const char* application_Company(); // "HOME Co."
+      const char* application_Copyright(); // "© 2007-2026 HOME Co. All rights reserved."
       const char* application_Version(); // "1.2.3.4-alpha5"
       uint16_t application_VersionMajor(); // 1
       uint16_t application_VersionMinor(); // 2
@@ -48,6 +56,14 @@ work using VSCode and MS VisualStudio.
       )
       ```
       ```c
+      const char* application_Architecture(); // "x64"
+      const char* application_CxxStandard(); // "C++20"
+      const char* application_CompilerName(); // "GCC"
+      const char* application_CompilerVersion(); // "12.3.0"
+      const char* application_Description(); // ""
+      const char* application_Product(); // ""
+      const char* application_Company(); // ""
+      const char* application_Copyright(); // ""
       const char* application_Version(); // "3333-pre-release"
       uint16_t application_VersionMajor(); // 3333
       uint16_t application_VersionMinor(); // 0
@@ -66,7 +82,7 @@ work using VSCode and MS VisualStudio.
     
       ```shell
       $ grep --binary-files=text "@(#)" application
-      @(#) Version: v1.2.3.4-alpha5 x64
+      @(#) Version: v1.2.3.4-alpha5 x64 C++20 GCC.12.3.0
       @(#) Description: Application Template
       @(#) Product Name: CMake C++ Template
       @(#) Company Name: HOME Co.
@@ -74,14 +90,14 @@ work using VSCode and MS VisualStudio.
       ```
       ```shell
       $ grep --binary-files=text "\$Id:" application
-      $Id: v1.2.3.4-alpha5 x64; Application Template; CMake C++ Template; HOME Co.; © 2007-2024 HOME Co. All rights reserved. $
+      $Id: v1.2.3.4-alpha5 x64 C++20 GCC.12.3.0; Application Template; CMake C++ Template; HOME Co.; © 2007-2024 HOME Co. All rights reserved. $
       ```
       ```shell
       $ readelf -p .note.version -p .note.description -p .note.product -p .note.company -p .note.copyright application
 
       String dump of section '.note.version':
         [     c]  1.2.3.4-alpha5
-        [    1b]  1.2.3.4-alpha5 x64
+        [    1b]  1.2.3.4-alpha5 x64 C++20 GCC.12.3.0
 
       String dump of section '.note.description':
         [     c]  description
@@ -132,12 +148,12 @@ work using VSCode and MS VisualStudio.
       $ readelf -p .sccsid application
 
       String dump of section '.sccsid':
-        [     2]  @(#) Version: v1.2.3.4-alpha5 x64\n
+        [     2]  @(#) Version: v1.2.3.4-alpha5 x64 C++20 GCC.12.3.0\n
                   @(#) Description: Application Template\n
                   @(#) Product Name: CMake C++ Template\n
                   @(#) Company Name: HOME Co.\n
                   @(#) Copyright: � 2007-2024 HOME Co. All rights reserved.\n
-                  $Id: v1.2.3.4-alpha5 x64; Application Template; CMake C++ Template; HOME Co.; � 2007-2024 HOME Co. All rights reserved. $\n
+                  $Id: v1.2.3.4-alpha5 x64 C++20 GCC.12.3.0; Application Template; CMake C++ Template; HOME Co.; � 2007-2024 HOME Co. All rights reserved. $\n
       ```
     </details>
 - `add_option` as a better variant of `set(...CACHE...)` that has the next features:

@@ -2,6 +2,7 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.18  2026-Jul-05    Added `get_target_cxx_standard` and expanded generating metainfo.
 # v0.17  2026-Jun-11    Added explicit `-gdwarf-4` for GCC [4.7, 5.0).
 #                       Fixed `dump_syms_and_strip` for libs.
 # v0.16  2026-Apr-13    Expanded generating metainfo.
@@ -24,7 +25,7 @@
 # v0.2   2022-Dec-24    Added support for Windows ARM64.
 # v0.1   2022-Oct-18    First release.
 if("${RUN}" STREQUAL "")
-    message("----- CMakeUtils v0.17 -----")
+    message("----- CMakeUtils v0.18 -----")
 endif()
 
 # Include this file before the main `project(...)`
@@ -136,7 +137,8 @@ function(init_project)
     include(CheckCXXCompilerFlag)
     if(MSVC)
         if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-            message("Compiler: MSVC v${CMAKE_CXX_COMPILER_VERSION}")
+            set(COMPILER_NAME "MSVC")
+            message("Compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
             set(BUILD_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}/${CMAKE_BUILD_TYPE}")
             if(MSVC_CPU_AUTO_LIMIT)
                 cmake_host_system_information(RESULT totalCPU QUERY NUMBER_OF_LOGICAL_CORES)
@@ -163,7 +165,8 @@ function(init_project)
                 /Zc:__cplusplus # Enable updated __cplusplus macro
             )
         else()
-            message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
+            set(COMPILER_NAME "Clang")
+            message("Compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
             set(BUILD_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}")
             add_compile_options(-fcolor-diagnostics)
         endif()
@@ -185,11 +188,14 @@ function(init_project)
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MD /Zi /O2 /Ob2 /DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MD /Zi /O2 /Ob2 /DNDEBUG" PARENT_SCOPE)
 
+        set(CMAKE_CXX_STANDARD_EXPERIMENTAL 26 PARENT_SCOPE)
         foreach(v 26 23 20 17 14 11)
             check_cxx_compiler_flag("/std:c++${v}" IS_CXX${v}_SUPPORTED)
             if(IS_CXX${v}_SUPPORTED)
                 set(CMAKE_CXX_STANDARD_AVAILABLE ${v} PARENT_SCOPE)
                 break()
+            else()
+                set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${v} PARENT_SCOPE)
             endif()
         endforeach()
 
@@ -198,7 +204,7 @@ function(init_project)
         __write_msvs_launch_vs_json("${arg_UNPARSED_ARGUMENTS}")
         #__crutch_for_msvs_bug_with_merges()
 
-    elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "(GNU|Clang)")
+    elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU|Clang|AppleClang")
         # -O3 -g0   3.4 MB  default Release
         # -O3 -g1   9.5 MB
         # -O2 -g1   9.3 MB
@@ -215,7 +221,12 @@ function(init_project)
         add_compile_options(-fvisibility=hidden)
 
         if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-            message("Compiler: GCC v${CMAKE_CXX_COMPILER_VERSION}")
+            if(MINGW)
+                set(COMPILER_NAME "MinGW")
+            else()
+                set(COMPILER_NAME "GCC")
+            endif()
+            message("Compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fdiagnostics-color=always)
             if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 4.7
                     AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
@@ -230,23 +241,27 @@ function(init_project)
                     add_compile_options(-flto=auto)
                 endif()
             endif()
-        elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-            message("Compiler: Clang v${CMAKE_CXX_COMPILER_VERSION}")
+        elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|AppleClang")
+            set(COMPILER_NAME "Clang")
+            message("Compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fcolor-diagnostics)
         endif()
 
         foreach(v 26 23 20 17 14 11)
             check_cxx_compiler_flag("-std=c++${v}" IS_CXX${v}_SUPPORTED)
             if(IS_CXX${v}_SUPPORTED)
-                set(CMAKE_CXX_STANDARD_AVAILABLE ${v} PARENT_SCOPE)
+                set(CMAKE_CXX_STANDARD_AVAILABLE ${v})
                 break()
             endif()
         endforeach()
+        set(CMAKE_CXX_STANDARD_AVAILABLE ${CMAKE_CXX_STANDARD_AVAILABLE} PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${CMAKE_CXX_STANDARD_AVAILABLE} PARENT_SCOPE)
 
         __find_gcc_qt5("5.15.2")
 
     else()
-        message(FATAL_ERROR "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}")
+        set(COMPILER_NAME "${CMAKE_CXX_COMPILER_ID}")
+        message(WARNING "Unknown compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
     endif()
 
     if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
@@ -282,6 +297,7 @@ function(init_project)
     set(BUILD_PLATFORM "${BUILD_PLATFORM}" PARENT_SCOPE)
     set(BUILD_FOLDER "${BUILD_FOLDER}" PARENT_SCOPE)
     set(BUILD_DIRECTORY "${BUILD_DIRECTORY}" PARENT_SCOPE)
+    set(COMPILER_NAME "${COMPILER_NAME}" PARENT_SCOPE)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${CMAKE_INTERPROCEDURAL_OPTIMIZATION} PARENT_SCOPE)
 endfunction(init_project)
 
@@ -505,6 +521,8 @@ function(add_metainfo targetName)
         message(FATAL_ERROR "add_metainfo: use it after specifying sources for ${targetName}")
     endif()
 
+    get_target_cxx_standard(${targetName} cxx)
+    set(buildInfo "${arg_VERSION} ${BUILD_ARCH} ${cxx} ${COMPILER_NAME}.${CMAKE_CXX_COMPILER_VERSION}")
     set(cPath "${CMAKE_CURRENT_BINARY_DIR}/${targetName}.metainfo.c")
     set(c
 "#include \"${targetName}.metainfo.h\"
@@ -524,13 +542,13 @@ __declspec(allocate(\"sccsid\"))
 // grep --binary-files=text \"@(#)\" application
 // readelf -p .sccsid {application}
 volatile const char sccsid[] = \"\\n\\n\"
-    \"@(#) Version: v${arg_VERSION} ${BUILD_ARCH}\\n\"
+    \"@(#) Version: v${buildInfo}\\n\"
     \"@(#) Description: ${arg_DESCRIPTION}\\n\"
     \"@(#) Product Name: ${arg_PRODUCT}\\n\"
     \"@(#) Company Name: ${arg_COMPANY}\\n\"
     \"@(#) Copyright: ${arg_COPYRIGHT}\\n\"
     \"\\n\"
-    \"$Id: v${arg_VERSION} ${BUILD_ARCH}; ${arg_DESCRIPTION}; ${arg_PRODUCT};\"
+    \"$Id: v${buildInfo}; ${arg_DESCRIPTION}; ${arg_PRODUCT};\"
     \" ${arg_COMPANY}; ${arg_COPYRIGHT} $\\n\"
 \"\\n\";
 static volatile const void* sccsid_anchor = sccsid;
@@ -555,7 +573,7 @@ static volatile const void* sccsid_anchor = sccsid;
             .name = NAME, \\
             .desc = TEXT \\
         }
-    ADD_NOTE(version,     \"${arg_VERSION}\", \"${arg_VERSION} ${BUILD_ARCH}\");
+    ADD_NOTE(version,     \"${arg_VERSION}\", \"${buildInfo}\");
     ADD_NOTE(description, \"description\",    \"${arg_DESCRIPTION}\");
     ADD_NOTE(product,     \"product\",        \"${arg_PRODUCT}\");
     ADD_NOTE(company,     \"company\",        \"${arg_COMPANY}\");
@@ -564,6 +582,15 @@ static volatile const void* sccsid_anchor = sccsid;
 
 const char* ${targetName}_Architecture() {
     return \"${BUILD_ARCH}\";
+}
+const char* ${targetName}_CxxStandard() {
+    return \"${cxx}\";
+}
+const char* ${targetName}_CompilerName() {
+    return \"${COMPILER_NAME}\";
+}
+const char* ${targetName}_CompilerVersion() {
+    return \"${CMAKE_CXX_COMPILER_VERSION}\";
 }
 const char* ${targetName}_Description() {
     return \"${arg_DESCRIPTION}\";
@@ -607,6 +634,9 @@ extern \"C\" {
 #endif
 
 const char* ${targetName}_Architecture();
+const char* ${targetName}_CxxStandard();
+const char* ${targetName}_CompilerName();
+const char* ${targetName}_CompilerVersion();
 const char* ${targetName}_Description();
 const char* ${targetName}_Product();
 const char* ${targetName}_Company();
@@ -688,7 +718,7 @@ BEGIN
         BEGIN
             VALUE \"FileDescription\", \"${arg_DESCRIPTION}\\0\"
             VALUE \"ProductName\", \"${arg_PRODUCT}\\0\"
-            VALUE \"ProductVersion\", \"${arg_VERSION} ${BUILD_ARCH}\\0\"
+            VALUE \"ProductVersion\", \"${buildInfo}\\0\"
             VALUE \"CompanyName\", \"${arg_COMPANY}\\0\"
             VALUE \"LegalCopyright\", \"${arg_COPYRIGHT}\\0\"
             VALUE \"OriginalFilename\", \"${targetOutputName}\\0\"
@@ -1064,11 +1094,11 @@ function(__find_msvc_qt5 drives qtVersion)
 endfunction(__find_msvc_qt5)
 
 
-#  ██████   █████   ██████ ██   ██ ████████ ██████   █████   ██████ ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
-#  ██   ██ ██   ██ ██      ██  ██     ██    ██   ██ ██   ██ ██      ██          ██    ██    ██    ██ ██      ██    ██    ██      ██      
-#  ██████  ███████ ██      █████      ██    ██████  ███████ ██      █████       ██    ██    ██    ██ ██      ██    ██    █████   ███████ 
-#  ██   ██ ██   ██ ██      ██  ██     ██    ██   ██ ██   ██ ██      ██          ██    ██    ██    ██ ██      ██    ██    ██           ██ 
-#  ██████  ██   ██  ██████ ██   ██    ██    ██   ██ ██   ██  ██████ ███████      ██████     ██    ██ ███████ ██    ██    ███████ ███████ 
+#  ██████   █████   ██████ ██   ██ ████████ ██████   █████   ██████ ███████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
+#  ██   ██ ██   ██ ██      ██  ██     ██    ██   ██ ██   ██ ██      ██          ██    ██    ██    ██ ██      ██    ██    ██      ██
+#  ██████  ███████ ██      █████      ██    ██████  ███████ ██      █████       ██    ██    ██    ██ ██      ██    ██    █████   ███████
+#  ██   ██ ██   ██ ██      ██  ██     ██    ██   ██ ██   ██ ██      ██          ██    ██    ██    ██ ██      ██    ██    ██           ██
+#  ██████  ██   ██  ██████ ██   ██    ██    ██   ██ ██   ██  ██████ ███████      ██████     ██    ██ ███████ ██    ██    ███████ ███████
 
 # @param targetName                     Target name for which the symbols will be dumped.
 # @param toPath             (optional)  "workdir/{to/Path}.sym|pdb.zip"
@@ -1357,6 +1387,133 @@ function(get_target_output_name targetName targetOutputName targetOutputExtensio
 endfunction(get_target_output_name)
 
 
+# @param      targetName          Target name to get its applied C++ version.
+# @param[out] appliedCxxStandard  Examples:
+#       c++98 c++03 c++11 c++14 c++17 c++20 c++23 c++26 c++29
+#                   c++0x c++1y c++1z c++2a c++2b c++2c c++2d
+function(get_target_cxx_standard targetName appliedCxxStandard)
+    if(NOT TARGET ${targetName})
+        message(FATAL_ERROR "get_target_cxx_standard: Target \"${targetName}\" does not exist.")
+    endif()
+
+    get_target_property(desired ${targetName} CXX_STANDARD)
+    if(desired STREQUAL "CXX_STANDARD-NOTFOUND" OR desired STREQUAL "")
+        set(desired ${CMAKE_CXX_STANDARD})
+    endif()
+
+    get_target_property(withExtensions ${targetName} CXX_EXTENSIONS)
+    if(withExtensions STREQUAL "CXX_EXTENSIONS-NOTFOUND" OR withExtensions STREQUAL "")
+        set(withExtensions ${CMAKE_CXX_EXTENSIONS})
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        #   98: always  |  03: always  |  11: >=4.7  |  14: >=5.1
+        #   17: >=7.0   |  20: >=10.0  |  23: >=13.0 |  26: > 16.0
+        set(applied "${desired}")
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7")
+            if(desired GREATER_EQUAL 11)
+                set(applied "0x")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.1")
+            if(desired GREATER_EQUAL 14)
+                set(applied "1y")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "7.0")
+            if(desired GREATER_EQUAL 17)
+                set(applied "1z")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+            if(desired GREATER_EQUAL 20)
+                set(applied "2a")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13.0")
+            if(desired GREATER_EQUAL 23)
+                set(applied "2b")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "17.0")
+            if(desired GREATER_EQUAL 26)
+                set(applied "2c")
+            endif()
+        endif()
+        if(withExtensions)
+            set(applied "GNU++${applied}")
+        else()
+            set(applied "C++${applied}")
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+        #   98: always  |  03: always  |  11: >=3.0  |  14: >=3.4
+        #   17: >=5.0   |  20: >=10.0  |  23: >=17.0 |  26: > 22.0
+        set(applied "${desired}")
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.0")
+            if(desired GREATER_EQUAL 11)
+                set(applied "0x")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.4")
+            if(desired GREATER_EQUAL 14)
+                set(applied "1y")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.0")
+            if(desired GREATER_EQUAL 17)
+                set(applied "1z")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
+            if(desired GREATER_EQUAL 20)
+                set(applied "2a")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "17.0")
+            if(desired GREATER_EQUAL 23)
+                set(applied "2b")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "23.0")
+            if(desired GREATER_EQUAL 26)
+                set(applied "2c")
+            endif()
+        endif()
+        if(withExtensions)
+            set(applied "GNU++${applied}")
+        else()
+            set(applied "C++${applied}")
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        #   < 19.00.24215  (pre-VS2015 U3)  — no /std: flag
+        set(applied "${desired}")
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.00.24215") # pre-VS2015 U3
+            if(desired GREATER_EQUAL 11)
+                set(applied "0x")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.10") # VS2017 15.0
+            if(desired GREATER_EQUAL 14)
+                set(applied "1y")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.14") # VS2017 15.7
+            if(desired GREATER_EQUAL 17)
+                set(applied "1z")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.29") # VS2019 16.11
+            if(desired GREATER_EQUAL 20)
+                set(applied "2a")
+            endif()
+        elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.52") # VS2026 18.?
+            if(desired GREATER_EQUAL 23)
+                set(applied "2b")
+            endif()
+        #elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.??") # VS20?? ??.?
+            elseif(desired GREATER_EQUAL 26)
+                set(applied "2c")
+            #endif()
+        endif()
+        if(applied MATCHES "98|03|11" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.10")
+            set(applied "14")
+        endif()
+        set(applied "C++${applied}")
+    else()
+        set(applied "C++??")
+        message(WARNING "get_target_cxx_standard: Unknown compiler ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+    set(${appliedCxxStandard} "${applied}" PARENT_SCOPE)
+endfunction(get_target_cxx_standard)
+
+
 # @param targetName          Target name for which the binary will be copied.
 # @param toPath              "workdir/{to/Path}.ext"
 #        -/-     "WORKDIR":  "workdir/bin_{arch}/{targetOutputName}.ext"
@@ -1379,7 +1536,7 @@ function(copy_release_binary targetName toPath)
     endif()
 
     add_custom_command(
-        TARGET ${PROJECT_NAME} POST_BUILD
+        TARGET ${targetName} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${fullFrom}" "${fullTo}"
     )
     set_target_properties(${targetName} PROPERTIES copy_release_binary TRUE)
