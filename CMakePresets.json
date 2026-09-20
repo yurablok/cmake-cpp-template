@@ -2,17 +2,26 @@
   "version": 3,
   "buildPresets": [
     { "name": "x64-Debug-GCC", "configurePreset": "x64-Debug-GCC" },
+    { "name": "x64-DebugSan-GCC", "configurePreset": "x64-DebugSan-GCC" },
     { "name": "x64-Release-GCC", "configurePreset": "x64-Release-GCC" },
 
     { "name": "x64-Debug-Clang", "configurePreset": "x64-Debug-Clang" },
+    { "name": "x64-DebugSan-Clang", "configurePreset": "x64-DebugSan-Clang" },
     { "name": "x64-Release-Clang", "configurePreset": "x64-Release-Clang" },
 
     { "name": "x64-Debug-Mac", "configurePreset": "x64-Debug-Mac" },
+    { "name": "x64-DebugSan-Mac", "configurePreset": "x64-DebugSan-Mac" },
     { "name": "x64-Release-Mac", "configurePreset": "x64-Release-Mac" },
+    { "name": "arm64-Debug-Mac", "configurePreset": "arm64-Debug-Mac" },
+    { "name": "arm64-DebugSan-Mac", "configurePreset": "arm64-DebugSan-Mac" },
+    { "name": "arm64-Release-Mac", "configurePreset": "arm64-Release-Mac" },
 
     { "name": "x64-Debug-VS2026", "configurePreset": "x64-Debug-VS2026" },
+    { "name": "x64-DebugSan-VS2026", "configurePreset": "x64-DebugSan-VS2026" },
     { "name": "arm64-Debug-VS2026", "configurePreset": "arm64-Debug-VS2026" },
+    { "name": "arm64-DebugSan-VS2026", "configurePreset": "arm64-DebugSan-VS2026" },
     { "name": "x32-Debug-VS2026", "configurePreset": "x32-Debug-VS2026" },
+    { "name": "x32-DebugSan-VS2026", "configurePreset": "x32-DebugSan-VS2026" },
     { "name": "x64-Release-VS2026", "configurePreset": "x64-Release-VS2026" },
     { "name": "arm64-Release-VS2026", "configurePreset": "arm64-Release-VS2026" },
     { "name": "x32-Release-VS2026", "configurePreset": "x32-Release-VS2026" },
@@ -71,7 +80,7 @@
     {
       "name": "MacBase", "inherits": "Base", "hidden": true,
       "generator": "Ninja",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "macOS" },
+      "condition": { "type": "inList", "string": "${hostSystemName}", "list": [ "Darwin", "macOS" ] },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": { "hostOS": [ "macOS" ] }
       }
@@ -121,6 +130,10 @@
       }
     },
     {
+      "name": "x64-DebugSan-GCC", "inherits": "x64-Debug-GCC",
+      "cacheVariables": { "sanitize": "address,undefined" }
+    },
+    {
       "name": "x64-Release-GCC", "inherits": "LinuxBaseGCC",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
@@ -132,6 +145,10 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
+    },
+    {
+      "name": "x64-DebugSan-Clang", "inherits": "x64-Debug-Clang",
+      "cacheVariables": { "sanitize": "address,undefined" }
     },
     {
       "name": "x64-Release-Clang", "inherits": "LinuxBaseClang",
@@ -147,9 +164,31 @@
       }
     },
     {
+      "name": "x64-DebugSan-Mac", "inherits": "x64-Debug-Mac",
+      "cacheVariables": { "sanitize": "address,undefined" }
+    },
+    {
       "name": "x64-Release-Mac", "inherits": "MacBase",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "arm64-Debug-Mac", "inherits": "MacBase",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug",
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
+      }
+    },
+    {
+      "name": "arm64-DebugSan-Mac", "inherits": "arm64-Debug-Mac",
+      "cacheVariables": { "sanitize": "address,undefined" }
+    },
+    {
+      "name": "arm64-Release-Mac", "inherits": "MacBase",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo", "CMAKE_CONFIGURATION_TYPES": "RelWithDebInfo",
+        "CMAKE_OSX_ARCHITECTURES": "arm64"
       }
     },
 
@@ -161,6 +200,10 @@
       }
     },
     {
+      "name": "x64-DebugSan-VS2026", "inherits": "x64-Debug-VS2026",
+      "cacheVariables": { "sanitize": "address" }
+    },
+    {
       "name": "arm64-Debug-VS2026", "inherits": "WindowsBaseVS2026",
       "architecture": { "value": "ARM64", "strategy": "set" },
       "cacheVariables": {
@@ -168,11 +211,19 @@
       }
     },
     {
+      "name": "arm64-DebugSan-VS2026", "inherits": "arm64-Debug-VS2026",
+      "cacheVariables": { "sanitize": "address" }
+    },
+    {
       "name": "x32-Debug-VS2026", "inherits": "WindowsBaseVS2026",
       "architecture": { "value": "Win32", "strategy": "set" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug", "CMAKE_CONFIGURATION_TYPES": "Debug"
       }
+    },
+    {
+      "name": "x32-DebugSan-VS2026", "inherits": "x32-Debug-VS2026",
+      "cacheVariables": { "sanitize": "address" }
     },
     {
       "name": "x64-Release-VS2026", "inherits": "WindowsBaseVS2026",

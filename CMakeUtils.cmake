@@ -2,6 +2,8 @@
 # https://github.com/yurablok/cmake-cpp-template
 #
 # History:
+# v0.19  2026-Sep-20    Added `sanitize` support (GCC, Clang, MSVC; but no ClangCL yet).
+#                       Added macOS `.app` bundle (Info.plist) generation in `add_metainfo`.
 # v0.18  2026-Jul-05    Added `get_target_cxx_standard` and expanded generating metainfo.
 # v0.17  2026-Jun-11    Added explicit `-gdwarf-4` for GCC [4.7, 5.0).
 #                       Fixed `dump_syms_and_strip` for libs.
@@ -25,7 +27,7 @@
 # v0.2   2022-Dec-24    Added support for Windows ARM64.
 # v0.1   2022-Oct-18    First release.
 if("${RUN}" STREQUAL "")
-    message("----- CMakeUtils v0.18 -----")
+    message("----- CMakeUtils v0.19 -----")
 endif()
 
 # Include this file before the main `project(...)`
@@ -110,7 +112,11 @@ function(init_project)
         set(BUILD_PLATFORM "Unknown")
     endif()
 
-    set(BUILD_FOLDER "${BUILD_ARCH}-${BUILD_TYPE}-${BUILD_PLATFORM}")
+    if("${sanitize}" STREQUAL "")
+        set(BUILD_FOLDER "${BUILD_ARCH}-${BUILD_TYPE}-${BUILD_PLATFORM}")
+    else()
+        set(BUILD_FOLDER "${BUILD_ARCH}-${BUILD_TYPE}San-${BUILD_PLATFORM}")
+    endif()
     message("BUILD_FOLDER: ${BUILD_FOLDER}")
 
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}" PARENT_SCOPE)
@@ -152,10 +158,15 @@ function(init_project)
                 endif()
             endif()
 
-            if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-                add_compile_options(
-                    /ZI # Debug Information with Edit and Continue
-                )
+            if("${sanitize}" STREQUAL "")
+                if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+                    add_compile_options(
+                        /ZI # Debug Information with Edit and Continue
+                    )
+                endif()
+            else()
+                add_compile_options(/fsanitize=${sanitize})
+                #add_link_options(/fsanitize=${sanitize})
             endif()
             add_compile_options(
                 /utf-8 # Set source and execution character sets to UTF-8
@@ -169,9 +180,29 @@ function(init_project)
             message("Compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
             set(BUILD_DIRECTORY "${CMAKE_SOURCE_DIR}/build/${BUILD_FOLDER}")
             add_compile_options(-fcolor-diagnostics)
+            if(NOT "${sanitize}" STREQUAL "")
+                message(WARNING "The use of sanitizers with Clang has not been implemented yet.")
+                #add_compile_options(-fsanitize=${sanitize} -fsanitize-trap=undefined)
+                #add_link_options(-fsanitize=address)
+                #get_filename_component(_clang_bindir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+                #get_filename_component(_clang_root "${_clang_bindir}" DIRECTORY)
+                #string(REGEX MATCH "^[0-9]+" _clang_major "${CMAKE_CXX_COMPILER_VERSION}")
+                #set(_clang_rt_dir "${_clang_root}/lib/clang/${_clang_major}/lib/windows")
+                #foreach(_san IN LISTS _san_list)
+                #    if(_san STREQUAL "address")
+                #        list(APPEND _san_rt_libs "${_clang_rt_dir}/clang_rt.asan_dynamic-${_arch}.lib")
+                #    elseif(_san STREQUAL "undefined")
+                #        list(APPEND _san_rt_libs "${_clang_rt_dir}/clang_rt.ubsan_standalone-${_arch}.lib")
+                #    endif()
+                #endforeach()
+                #if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+                #    set(CMAKE_C_FLAGS_DEBUG "/MD /Od /Zi" PARENT_SCOPE)
+                #    set(CMAKE_CXX_FLAGS_DEBUG "/MD /Od /Zi" PARENT_SCOPE)
+                #endif()
+            endif()
         endif()
 
-        if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+        if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND "${sanitize}" STREQUAL "")
             add_compile_options(
                 /JMC # Just My Code Debugging
             )
@@ -184,18 +215,18 @@ function(init_project)
 
         # The /Zi option produces a separate PDB file that contains all the symbolic
         # debugging information for use with the debugger. The debugging information
-        # isn't included in the object files or executable, which makes them much smaller.
+        # isn't included in the object files and executable, which makes them much smaller.
         set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MD /Zi /O2 /Ob2 /DNDEBUG" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MD /Zi /O2 /Ob2 /DNDEBUG" PARENT_SCOPE)
 
-        set(CMAKE_CXX_STANDARD_EXPERIMENTAL 26 PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_EXPERIMENTAL 26)
         foreach(v 26 23 20 17 14 11)
             check_cxx_compiler_flag("/std:c++${v}" IS_CXX${v}_SUPPORTED)
             if(IS_CXX${v}_SUPPORTED)
-                set(CMAKE_CXX_STANDARD_AVAILABLE ${v} PARENT_SCOPE)
+                set(CMAKE_CXX_STANDARD_AVAILABLE ${v})
                 break()
             else()
-                set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${v} PARENT_SCOPE)
+                set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${v})
             endif()
         endforeach()
 
@@ -241,10 +272,18 @@ function(init_project)
                     add_compile_options(-flto=auto)
                 endif()
             endif()
+            if(NOT "${sanitize}" STREQUAL "")
+                add_compile_options(-fsanitize=${sanitize} -fno-omit-frame-pointer)
+                add_link_options(-fsanitize=${sanitize})
+            endif()
         elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|AppleClang")
             set(COMPILER_NAME "Clang")
             message("Compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
             add_compile_options(-fcolor-diagnostics)
+            if(NOT "${sanitize}" STREQUAL "")
+                add_compile_options(-fsanitize=${sanitize} -fno-omit-frame-pointer)
+                add_link_options(-fsanitize=${sanitize})
+            endif()
         endif()
 
         foreach(v 26 23 20 17 14 11)
@@ -254,8 +293,7 @@ function(init_project)
                 break()
             endif()
         endforeach()
-        set(CMAKE_CXX_STANDARD_AVAILABLE ${CMAKE_CXX_STANDARD_AVAILABLE} PARENT_SCOPE)
-        set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${CMAKE_CXX_STANDARD_AVAILABLE} PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${CMAKE_CXX_STANDARD_AVAILABLE})
 
         __find_gcc_qt5("5.15.2")
 
@@ -264,13 +302,24 @@ function(init_project)
         message(WARNING "Unknown compiler: ${COMPILER_NAME} v${CMAKE_CXX_COMPILER_VERSION}")
     endif()
 
+    # The `CMAKE_CXX_STANDARD_REQUIRED OFF` mechanism is skipped for targets
+    # that also declare `cxx_std_*` compile features (e.g. `fmt`). Such targets
+    # have no `-std` flag at all, and, when the requested standard is too high
+    # (not actually provided by a toolchain), is compiled as C++98.
     if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
-        set(CMAKE_CXX_STANDARD 26 PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD 26)
     elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.20)
-        set(CMAKE_CXX_STANDARD 23 PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD 23)
     else()
-        set(CMAKE_CXX_STANDARD 20 PARENT_SCOPE)
+        set(CMAKE_CXX_STANDARD 20)
     endif()
+    if(CMAKE_CXX_STANDARD LESS CMAKE_CXX_STANDARD_EXPERIMENTAL)
+        set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD} PARENT_SCOPE)
+    else()
+        set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_EXPERIMENTAL} PARENT_SCOPE)
+    endif()
+    set(CMAKE_CXX_STANDARD_AVAILABLE ${CMAKE_CXX_STANDARD_AVAILABLE} PARENT_SCOPE)
+    set(CMAKE_CXX_STANDARD_EXPERIMENTAL ${CMAKE_CXX_STANDARD_EXPERIMENTAL} PARENT_SCOPE)
     set(CMAKE_CXX_STANDARD_REQUIRED OFF PARENT_SCOPE)
     set(CMAKE_CXX_EXTENSIONS OFF PARENT_SCOPE)
 
@@ -290,6 +339,10 @@ function(init_project)
     endif()
     if(Qt5_DIR)
         set(Qt5_DIR "${Qt5_DIR}" PARENT_SCOPE)
+    endif()
+
+    if(APPLE)
+        set(CMAKE_EXECUTABLE_SUFFIX ".app" PARENT_SCOPE)
     endif()
 
     set(BUILD_ARCH "${BUILD_ARCH}" PARENT_SCOPE)
@@ -489,8 +542,13 @@ endfunction(add_option)
 # @param COMPANY      (optional)  "HOME Co."
 # @param COPYRIGHT    (optional)  "© 2007-2024 HOME Co. All rights reserved."
 # @param ICON         (optional)  "icon" (without the extension) => Windows: .ico, MacOS: .icns
+# @param BUNDLE       (optional)  ON: MacOS-only, generate a real `.app` bundle (Info.plist, icon)
+#                                 Default: OFF: keep it as a plain executable with `.app` suffix
 function(add_metainfo targetName)
-    cmake_parse_arguments(arg "" "VERSION;DESCRIPTION;COMPANY;PRODUCT;COPYRIGHT;ICON" "" "${ARGN}")
+    cmake_parse_arguments(arg "" "VERSION;DESCRIPTION;COMPANY;PRODUCT;COPYRIGHT;ICON;BUNDLE" "" "${ARGN}")
+    if("${arg_BUNDLE}" STREQUAL "")
+        set(arg_BUNDLE OFF)
+    endif()
 
     string(REGEX MATCH "([0-9]+)\\.?([0-9]+)?\\.?([0-9]+)?\\.?([0-9]+)?-?([-0-9a-zA-Z]+)?" result ${arg_VERSION})
     if("${CMAKE_MATCH_1}" STREQUAL "")
@@ -527,9 +585,7 @@ function(add_metainfo targetName)
     set(c
 "#include \"${targetName}.metainfo.h\"
 
-#if defined(__unix__)
-  __attribute__((used, section(\".sccsid\")))
-#else
+#if defined(_MSC_VER)
 # pragma section(\"sccsid\", read)
 # if defined(__cplusplus)
     extern \"C\"
@@ -537,11 +593,15 @@ function(add_metainfo targetName)
     extern
 # endif
 __declspec(allocate(\"sccsid\"))
+#elif defined(__APPLE__)
+__attribute__((used, section(\"__TEXT,__sccsid\")))
+#else
+__attribute__((used, section(\".sccsid\")))
 #endif
 // Source Code Control System (SCCS) convention
 // grep --binary-files=text \"@(#)\" application
 // readelf -p .sccsid {application}
-volatile const char sccsid[] = \"\\n\\n\"
+volatile const char ${targetName}_sccsid[] = \"\\n\\n\"
     \"@(#) Version: v${buildInfo}\\n\"
     \"@(#) Description: ${arg_DESCRIPTION}\\n\"
     \"@(#) Product Name: ${arg_PRODUCT}\\n\"
@@ -551,9 +611,9 @@ volatile const char sccsid[] = \"\\n\\n\"
     \"$Id: v${buildInfo}; ${arg_DESCRIPTION}; ${arg_PRODUCT};\"
     \" ${arg_COMPANY}; ${arg_COPYRIGHT} $\\n\"
 \"\\n\";
-static volatile const void* sccsid_anchor = sccsid;
+static volatile const void* ${targetName}_sccsid_anchor = ${targetName}_sccsid;
 
-#if defined(__unix__)
+#if !defined(_MSC_VER) && !defined(__APPLE__)
 // readelf -p .note.version {application}
 // readelf -p .note.version -p .note.description -p .note.product -p .note.company -p .note.copyright application
 // readelf -n {application}
@@ -605,7 +665,7 @@ const char* ${targetName}_Copyright() {
     return \"${arg_COPYRIGHT}\";
 }
 const char* ${targetName}_Version() {
-    (void)sccsid_anchor;
+    (void)${targetName}_sccsid_anchor;
     return \"${arg_VERSION}\";
 }
 uint16_t ${targetName}_VersionMajor() {
@@ -748,15 +808,106 @@ END
         endif()
         list(APPEND targetSources "${rcPath}")
     elseif(APPLE)
-        #TODO: Generate Info.plist
-        if(NOT "${arg_ICON}" STREQUAL "")
-            set(iconPath "${arg_ICON}.icns")
-            set_source_files_properties(${iconPath} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-            list(APPEND targetSources "${iconPath}")
+        get_target_output_name(${targetName} appName appExt)
+        if("${targetType}" STREQUAL "EXECUTABLE")
+            set(path "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${appName}${appExt}")
+            if(NOT ${arg_BUNDLE} AND IS_DIRECTORY "${path}")
+                file(REMOVE_RECURSE "${path}")
+            elseif(${arg_BUNDLE} AND EXISTS "${path}" AND NOT IS_DIRECTORY "${path}")
+                file(REMOVE "${path}")
+            endif()
+        endif()
+        if("${targetType}" STREQUAL "EXECUTABLE" AND ${arg_BUNDLE})
+            set(bundleDisplayName "${targetName}")
+            if(NOT "${arg_PRODUCT}" STREQUAL "")
+                set(bundleDisplayName "${arg_PRODUCT}")
+            endif()
+            if(NOT "${arg_COMPANY}" STREQUAL "")
+                string(TOLOWER "${arg_COMPANY}" bundleIdCompany)
+                string(REGEX REPLACE "[^a-z0-9]" "" bundleIdCompany "${bundleIdCompany}")
+            endif()
+            if("${bundleIdCompany}" STREQUAL "")
+                set(bundleIdCompany "local")
+            endif()
+            if("${arg_DESCRIPTION}" STREQUAL "")
+                string(TOLOWER "${targetName}" bundleIdTarget)
+            else()
+                string(TOLOWER "${arg_DESCRIPTION}" bundleIdTarget)
+            endif()
+            string(REGEX REPLACE "[^a-z0-9]" "" bundleIdTarget "${bundleIdTarget}")
+            set(bundleIdentifier "com.${bundleIdCompany}.${bundleIdTarget}")
+
+            set(bundleIcon "")
+            if(NOT "${arg_ICON}" STREQUAL "")
+                get_filename_component(bundleIcon "${arg_ICON}" NAME)
+            endif()
+
+            __xml_escape("${appName}" pExe)
+            __xml_escape("${targetName}" pName)
+            __xml_escape("${bundleDisplayName}" pDisplayName)
+            __xml_escape("${arg_VERSION}" pVersion)
+            __xml_escape("${arg_COPYRIGHT}" pCopyright)
+            __xml_escape("${arg_DESCRIPTION}" pDescription)
+
+            set(plist
+"<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">
+<plist version=\"1.0\"><dict>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleIdentifier</key><string>${bundleIdentifier}</string>
+    <key>CFBundleSignature</key><string>????</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleShortVersionString</key><string>${pVersion}</string>
+    <key>CFBundleVersion</key><string>${pVersion}</string>
+    <key>CFBundleName</key><string>${pName}</string>
+    <key>CFBundleExecutable</key><string>${pExe}</string>
+    <key>CFBundleDisplayName</key><string>${pDisplayName}</string>
+    <key>CFBundlePackageType</key><string>APPL</string>")
+            if(NOT "${arg_DESCRIPTION}" STREQUAL "")
+                set(plist "${plist}
+    <key>Description</key><string>${pDescription}</string>")
+            endif()
+            if(NOT "${arg_COPYRIGHT}" STREQUAL "")
+                set(plist "${plist}
+    <key>NSHumanReadableCopyright</key><string>${pCopyright}</string>")
+            endif()
+            if(NOT "${bundleIcon}" STREQUAL "")
+                set(plist "${plist}
+    <key>CFBundleIconFile</key><string>${bundleIcon}</string>")
+            endif()
+            set(plist "${plist}
+</dict></plist>
+")
+            set(plistPath "${CMAKE_CURRENT_BINARY_DIR}/${targetName}.metainfo.plist")
+            string(SHA256 plistHash "${plist}")
+            if(NOT "${${targetName}_plistHashCached}" STREQUAL "${plistHash}")
+                set(${targetName}_plistHashCached "${plistHash}" CACHE INTERNAL "")
+                file(WRITE "${plistPath}" "${plist}")
+                message("Generated ${targetName}.metainfo.plist")
+            endif()
+
+            set_target_properties(${targetName} PROPERTIES
+                SUFFIX ""
+                MACOSX_BUNDLE TRUE
+                MACOSX_BUNDLE_INFO_PLIST "${plistPath}"
+            )
+            if(NOT "${arg_ICON}" STREQUAL "")
+                set(iconPath "${arg_ICON}.icns")
+                set_source_files_properties(${iconPath} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+                list(APPEND targetSources "${iconPath}")
+            endif()
         endif()
     endif()
     target_sources(${targetName} PRIVATE "${targetSources}")
 endfunction(add_metainfo)
+
+function(__xml_escape in out)
+    set(esc "${in}")
+    string(REPLACE "&" "&amp;" esc "${esc}")
+    string(REPLACE "<" "&lt;" esc "${esc}")
+    string(REPLACE ">" "&gt;" esc "${esc}")
+    set(${out} "${esc}" PARENT_SCOPE)
+endfunction(__xml_escape)
 
 
 #   ██████  ██ ████████     ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
@@ -1294,16 +1445,22 @@ function(__write_msvs_launch_vs_json targets)
         #message("targetName=${targetName} targetArgs=[${targetArgs}]")
 
         add("x64-Debug-Windows/Debug"              "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x64-DebugSan-Windows/Debug"           "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("arm64-Debug-Windows/Debug"            "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-DebugSan-Windows/Debug"         "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("x32-Debug-Windows/Debug"              "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+        add("x32-DebugSan-Windows/Debug"           "${Qt5x32Path}" "${targetName}" "${targetArgs}")
 
         add("x64-Release-Windows/RelWithDebInfo"   "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("arm64-Release-Windows/RelWithDebInfo" "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("x32-Release-Windows/RelWithDebInfo"   "${Qt5x32Path}" "${targetName}" "${targetArgs}")
 
         add("x64-Debug-Windows"                    "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("x64-DebugSan-Windows"                 "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("arm64-Debug-Windows"                  "${Qt5x64Path}" "${targetName}" "${targetArgs}")
+        add("arm64-DebugSan-Windows"               "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("x32-Debug-Windows"                    "${Qt5x32Path}" "${targetName}" "${targetArgs}")
+        add("x32-DebugSan-Windows"                 "${Qt5x32Path}" "${targetName}" "${targetArgs}")
 
         add("x64-Release-Windows"                  "${Qt5x64Path}" "${targetName}" "${targetArgs}")
         add("arm64-Release-Windows"                "${Qt5x64Path}" "${targetName}" "${targetArgs}")

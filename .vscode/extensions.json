@@ -1,5 +1,7 @@
 {
   "recommendations": [
-    "ibm.output-colorizer"
+    "ibm.output-colorizer",
+    "vadimcn.vscode-lldb",
+    "ranyitz.search-presets"
   ]
 }

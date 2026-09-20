@@ -1,0 +1,65 @@
+// Copy this content to your global keybindings, or find an extension that loads this local one
+[
+  // For classic function key behavior on macOS:
+  // "Keyboard" => "Function Keys" => enable "Use function keys F1, F2, and others as standard"
+  {
+    "key": "f5",
+    "command": "cmake.debugTarget",
+    "when": "cmake:enableFullFeatureSet && inCMakeProject && !cmake:hideDebugCommand && !inDebugMode"
+  },
+  {
+    "key": "f7",
+    "command": "cmake.build",
+    "when": "cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
+  },
+  {
+    "key": "f10",
+    "command": "workbench.action.debug.stepOver",
+    "when": "debugState == 'stopped'"
+  },
+  {
+    "key": "f11",
+    "command": "workbench.action.debug.stepInto",
+    "when": "debugState != 'inactive'"
+  },
+  {
+    "key": "shift+f11",
+    "command": "workbench.action.debug.stepOut",
+    "when": "debugState == 'stopped'"
+  },
+  {
+    "key": "alt+space",
+    "command": "editor.action.triggerSuggest",
+    "when": "editorHasCompletionItemProvider && textInputFocus && !editorReadonly && !suggestWidgetVisible"
+  },
+  {
+    "key": "alt+left",
+    "command": "workbench.action.navigateBack",
+    "when": "canNavigateBack"
+  },
+  {
+    "key": "alt+right",
+    "command": "workbench.action.navigateForward",
+    "when": "canNavigateForward"
+  },
+  {
+    "key": "cmd+left",
+    "command": "cursorWordLeft",
+    "when": "textInputFocus && isMac"
+  },
+  {
+    "key": "shift+cmd+left",
+    "command": "cursorWordLeftSelect",
+    "when": "textInputFocus && isMac"
+  },
+  {
+    "key": "cmd+right",
+    "command": "cursorWordRight",
+    "when": "textInputFocus && isMac"
+  },
+  {
+    "key": "shift+cmd+right",
+    "command": "cursorWordRightSelect",
+    "when": "textInputFocus && isMac"
+  }
+]

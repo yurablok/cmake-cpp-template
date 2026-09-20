@@ -19,8 +19,12 @@
   //"C_Cpp.intelliSenseCacheSize": 0, // If disk storage is slow
   "C_Cpp.autoAddFileAssociations": false,
 
+  "workbench.editor.showTabs": "multiple",
   "workbench.editor.wrapTabs": true,
   "workbench.editor.tabSizing": "shrink",
+  "workbench.editor.tabActionCloseVisibility": true,
+  "workbench.editor.tabActionReserveSpace": false,
+  "workbench.editor.decorations.badges": false,
   "workbench.panel.defaultLocation": "right",
   "debug.toolBarLocation": "commandCenter",
   //"workbench.activityBar.location": "hidden",
@@ -33,7 +37,7 @@
   "cmake.useCMakePresets": "auto",
   "cmake.configureOnOpen": true,
 
-  //"cmake.parallelJobs": 1, // 0 - not working
+  //"cmake.parallelJobs": 1, // 0 - doesn't work
 
   "cmake.configureSettings": {
     "CMAKE_COLOR_DIAGNOSTICS": "ON",
@@ -47,7 +51,8 @@
   "cmake.debugConfig": {
     "cwd": "${workspaceFolder}/workdir",
     "args": [ "--test-arg" ],
-    //"MIMode": "lldb", //NOTE: on MacOS
+    "type": "lldb", // vadimcn.vscode-lldb
+    "request": "launch",
     "externalConsole": false,
     "logging": { "programOutput": true, "moduleLoad": false }
   },
@@ -66,5 +71,18 @@
     "launch": { "visibility": "hidden" },
     "testPreset": { "visibility": "hidden" },
     "ctest": { "visibility": "hidden" }
+  },
+
+  "search-presets.custom": { // ranyitz.search-presets | Shift + Alt + F
+    "all": {},
+    "application": {
+      "filesToExclude": "\\.*, build, tests"
+    },
+    "deps": {
+      "filesToInclude": "deps"
+    },
+    "tests": {
+      "filesToInclude": "tests"
+    }
   }
 }

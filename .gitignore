@@ -3,5 +3,6 @@
 /.vs
 /.vscode/ipch
 /.clangd
+.DS_Store
 
 /application/resources/*.qm
